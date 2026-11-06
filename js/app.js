@@ -2,7 +2,7 @@
 import { BLOCKS, OBJECTIVES, SKILLS, SKILL_ICON, SUPPORT, TRAPS } from "./content/curriculum.js";
 import { WORLDS } from "./content/worlds.js";
 import { GLOSSARY, ITEMS, MISSION, SOURCES, TRUST_CARDS } from "./content/fizz.js";
-import { applyAnswer, mastery, nextBlock, nextDemand, nextSupport, rank, ranks, trapCounts, wrapping, mastered } from "./engine.js";
+import { applyAnswer, mastery, nextBlock, nextDemand, nextSupport, rank, ranks, trapCounts, wrapping, mastered, dealSlots, placeOptions } from "./engine.js";
 import * as S from "./store.js";
 import { demoClass } from "./demo-class.js";
 import { weeklyStreak, weekKey, gameXP } from "./kit/rewards.js";
@@ -132,10 +132,20 @@ function sourceCard(id, wrap) {
 }
 
 // Runs a list of items one after another. onAnswer(answer) after each; done(answers, help) at the end.
-function runItems(ids, { title, onDone, pick } = {}) {
+// One even spread of right-answer positions across the whole mission (all phases together), dealt once per visit.
+let MISSION_SLOTS = null;
+function missionSlots() {
+  if (!MISSION_SLOTS) {
+    const ids = MISSION.phases.flatMap(p => p.items || []), deal = dealSlots(ids.length);
+    MISSION_SLOTS = Object.fromEntries(ids.map((id, i) => [id, deal[i]]));
+  }
+  return MISSION_SLOTS;
+}
+function runItems(ids, { title, onDone, pick, slots: given } = {}) {
   const answers = []; let i = 0, help = 0;
   const box = document.createElement("div"); box.className = "runner";
   const nextId = () => pick ? pick(answers) : ids[i];
+  const slots = given || dealSlots(pick ? ids : ids.length);   // where the right answer sits in each question: evenly spread
   function show() {
     if (pick ? answers.length >= ids : i >= ids.length) return onDone(answers, help);
     const id = nextId();
@@ -143,8 +153,8 @@ function runItems(ids, { title, onDone, pick } = {}) {
     const it = ITEM[id], level = support(), helpAtStart = help;
     let wrap = wrapping(level), tries = 0, simplified = false, traps = [], gap = null;
     const total = pick ? ids : ids.length;
+    const opts = placeOptions(it.options.map((o, k) => ({ ...o, k })), slots[answers.length] ?? 0);   // same order on every redraw
     function draw() {
-      const opts = shuffle(it.options.map((o, k) => ({ ...o, k })));
       box.innerHTML = `<p class="kicker">${title || ""} · ${answers.length + 1} of ${total}</p>
         <div class="dots">${Array.from({ length: total }, (_, k) => `<i class="${k < answers.length ? (answers[k].support === "none" ? "ok" : answers[k].support === "hint" ? "mid" : "no") : k === answers.length ? "now" : ""}"></i>`).join("")}</div>
         ${it.source ? sourceCard(it.source, wrap) : ""}
@@ -248,7 +258,7 @@ function missionScreen() {
   intro.querySelector("#begin").onclick = () => {
     play("flip"); stage.innerHTML = "";
     const before = ranks(mastery(S.history()));
-    stage.appendChild(runItems(phase.items, { title: phase.title, onDone: (answers, help) => {
+    stage.appendChild(runItems(phase.items, { title: phase.title, slots: phase.items.map(id => missionSlots()[id]), onDone: (answers, help) => {
       const att = S.saveAttempt({ id: `fizz-${phase.kind}`, mode: "mission", answers });
       const note = afterTask(help);
       stage.innerHTML = `<div class="card done"><h2>${phase.title} complete</h2><p>+${att.xp} XP</p>${note}<button class="btn" id="nextPhase">Next phase</button> <a class="btn ghost" href="#/">Map</a></div>`;
@@ -327,13 +337,19 @@ function gym() {
 }
 
 /* ---------------- Trust or Bust: game ---------------- */
+// 4 Trust and 4 Bust cards in a mixed order, never 3 of the same answer in a row.
+function balancedCards() {
+  const pickN = ok => shuffle(TRUST_CARDS.filter(c => c.ok === ok)).slice(0, 4);
+  const yes = pickN(true), no = pickN(false);
+  return dealSlots(yes.length + no.length, 2).map(s => (s ? yes : no).pop()).filter(Boolean);
+}
 function game() {
   const timed = support() >= 2;
   page(`<div class="card"><p class="kicker">🕵️ Trust or Bust</p><p>Can this source be trusted? Tap <b>Trust</b> or <b>Bust</b>. Streaks build a combo.</p>
     <p class="small">${timed ? "Each card has 8 seconds." : "No timer at your support level."} Games give up to 30 XP a day.</p>
     <div class="arena" id="arena"><div class="ghud"><span class="hchip pts">Points <b id="gpts">0</b></span><span class="hchip combo" id="gcombo" hidden></span><span class="hchip" id="gleft"></span></div>
     <div id="gcard" class="gcard"></div></div></div>`);
-  const arena = $("#arena"), cards = shuffle(TRUST_CARDS).slice(0, 8), answers = [];
+  const arena = $("#arena"), cards = balancedCards(), answers = [];
   let i = 0, pts = 0, combo = 0, timer = null;
   const draw = () => {
     clearTimeout(timer);

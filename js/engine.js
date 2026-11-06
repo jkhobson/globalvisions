@@ -88,3 +88,25 @@ export function trapCounts(history) {
   history.flatMap(h => h.answers || []).forEach(a => (a.traps || (a.trap ? [a.trap] : [])).forEach(t => { c[t] = (c[t] || 0) + 1; }));
   return Object.entries(c).sort((a, b) => b[1] - a[1]);
 }
+
+/* ---------------- where the right answer goes ---------------- */
+// Positions for the right answer across n questions with `slots` options each.
+// Every position is used equally often (counts differ by at most 1), and no position comes up 3 times in a row,
+// so students can't learn "it's usually the top one". rand is injectable for tests.
+export function dealSlots(n, slots = 4, rand = Math.random) {
+  const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(rand() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+  const extra = shuffle([...Array(slots).keys()]);                   // which positions get the leftover questions
+  const bag = Array.from({ length: n }, (_, i) => i < n - (n % slots) ? i % slots : extra[i % slots]);
+  for (let t = 0; t < 200; t++) {
+    shuffle(bag);
+    if (!bag.some((s, i) => i >= 2 && s === bag[i - 1] && s === bag[i - 2])) return bag;
+  }
+  return Array.from({ length: n }, (_, i) => (i + extra[0]) % slots);  // fallback: simple rotation, always balanced
+}
+// Puts the right option (listed first in the content) at position `slot` and shuffles the wrong ones around it.
+export function placeOptions(options, slot, rand = Math.random) {
+  const wrong = options.slice(1);
+  for (let i = wrong.length - 1; i > 0; i--) { const j = Math.floor(rand() * (i + 1)); [wrong[i], wrong[j]] = [wrong[j], wrong[i]]; }
+  wrong.splice(slot % options.length, 0, options[0]);
+  return wrong;
+}

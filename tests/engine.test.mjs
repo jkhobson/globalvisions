@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { mastery, applyAnswer, nextBlock, rank, nextDemand, nextSupport, answerXP, wrapping, P_START, trapCounts } from "../js/engine.js";
+import { mastery, applyAnswer, nextBlock, rank, nextDemand, nextSupport, answerXP, wrapping, P_START, trapCounts, dealSlots, placeOptions } from "../js/engine.js";
 
 const at = (answers, t = "2026-11-06T01:00:00Z") => ({ text_id: "x", created_at: t, answers });
 const right = (block, demand = 0) => ({ block, demand, support: "none" });
@@ -66,4 +66,17 @@ test("wrapping: short text and simple stem at Full and Guided; 'Say it simpler' 
 test("trap counts sort most frequent first", () => {
   const t = trapCounts([at([{ traps: ["old-source", "emotive-hook"] }, { traps: ["old-source"] }])]);
   assert.deepEqual(t[0], ["old-source", 2]);
+});
+
+test("Right answers are spread evenly across positions, never 3 in a row", () => {
+  let seed = 1; const rand = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  for (let run = 0; run < 500; run++) for (const n of [1, 3, 5, 8, 10, 16]) {
+    const s = dealSlots(n, 4, rand), counts = [0, 0, 0, 0];
+    s.forEach(x => counts[x]++);
+    assert.equal(s.length, n);
+    assert.ok(Math.max(...counts) - Math.min(...counts) <= 1, `uneven: ${counts}`);
+    assert.ok(!s.some((x, i) => i >= 2 && x === s[i - 1] && x === s[i - 2]), `3 in a row: ${s}`);
+  }
+  const opts = [{ t: "right" }, { t: "a" }, { t: "b" }, { t: "c" }];
+  for (let k = 0; k < 4; k++) { const p = placeOptions(opts.map(o => ({ ...o })), k, rand); assert.equal(p[k].t, "right"); assert.equal(p.length, 4); }
 });
