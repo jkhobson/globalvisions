@@ -421,7 +421,11 @@ function me() {
     <p class="small">The app also adjusts this for you. More help never costs XP.</p></section>
     <h3 class="sec">Text size</h3>
     <section class="card"><div class="seg">${[["Normal", false], ["Large", true]].map(([n, v]) => `<button class="segb${!!prof.bigText === v ? " on" : ""}" data-big="${v}">${n}</button>`).join("")}</div></section>
+    <h3 class="sec">Colours</h3>
+    <section class="card"><div class="seg three">${[["Auto", "auto"], ["Light", "light"], ["Dark", "dark"]].map(([n, v]) => `<button class="segb${(prof.theme || "auto") === v ? " on" : ""}" data-theme="${v}">${n}</button>`).join("")}</div>
+    <p class="small">Auto follows your phone's setting.</p></section>
     <button class="btn ghost" id="out">Sign out and reset demo</button>`);
+  app.querySelectorAll("[data-theme]").forEach(b => b.onclick = () => { S.updateProfile({ theme: b.dataset.theme }); applyText(); me(); });
   app.querySelectorAll("[data-big]").forEach(b => b.onclick = () => { S.updateProfile({ bigText: b.dataset.big === "true" }); applyText(); me(); });
   app.querySelectorAll("input[name=sup]").forEach(x => x.onchange = () => { S.updateProfile({ support: +x.value, tasks: [] }); play("tap"); });
   $("#out").onclick = () => { if (confirm("Reset the demo? Your demo progress in this browser will be deleted.")) { S.signOut(); location.hash = ""; route(); } };
@@ -429,7 +433,12 @@ function me() {
 
 /* ---------------- routing ---------------- */
 const ROUTES = { "": home, "/": home, "/mission": missionScreen, "/gym": gym, "/game": game, "/board": board, "/me": me };
-const applyText = () => document.documentElement.classList.toggle("big-text", !!(S.profile() && S.profile().bigText));
+// Text size and colour theme from the profile. Theme "auto" removes the attribute so the phone's setting decides.
+function applyText() {
+  const p = S.profile(), root = document.documentElement;
+  root.classList.toggle("big-text", !!(p && p.bigText));
+  if (p && (p.theme === "light" || p.theme === "dark")) root.dataset.theme = p.theme; else delete root.dataset.theme;
+}
 function route() {
   applyText();
   if (!S.profile()) return signIn();
