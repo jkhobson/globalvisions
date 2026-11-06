@@ -4,6 +4,7 @@ import { WORLDS } from "./content/worlds.js";
 import { GLOSSARY, ITEMS, MISSION, SOURCES, TRUST_CARDS } from "./content/fizz.js";
 import { applyAnswer, mastery, nextBlock, nextDemand, nextSupport, rank, ranks, trapCounts, wrapping, mastered, dealSlots, placeOptions } from "./engine.js";
 import * as S from "./store.js";
+import { DEMO } from "./config.js";
 import { demoClass } from "./demo-class.js";
 import { weeklyStreak, weekKey, gameXP } from "./kit/rewards.js";
 import { play, soundUser, soundOn, setSound, say, canSpeak } from "./kit/sound.js";
@@ -59,6 +60,7 @@ function signIn() {
     <div class="levels">${SUPPORT.map((s, i) => `<label class="lv"><input type="radio" name="sup" value="${i}" ${i === 1 ? "checked" : ""}><b>${s.name}</b><span>${s.desc}</span></label>`).join("")}</div>
     <p class="small">You can change this any time. Help with English never costs XP.</p>
     <button class="btn big" id="go">Start</button>
+    <p class="small sec">Teacher? <a href="teacher.html">Open the teacher view</a></p>
   </main>`;
   let av = avatars[0];
   app.querySelectorAll(".av-pick").forEach(b => b.onclick = () => { app.querySelectorAll(".av-pick").forEach(x => x.classList.remove("on")); b.classList.add("on"); av = b.dataset.a; play("tap"); });
@@ -67,6 +69,53 @@ function signIn() {
     if (nick.length < 2) { $("#nick").focus(); $("#nick").classList.add("err"); return; }
     S.signIn(nick, av); S.updateProfile({ support: +app.querySelector("input[name=sup]:checked").value });
     soundUser(nick); location.hash = "#/"; route();
+  };
+}
+
+/* ---------------- sign in (school accounts) ---------------- */
+// Used only when js/config.js has Supabase settings. Step 1: school Google account. Step 2: class code and nickname.
+async function schoolSignIn() {
+  const A = await import("./auth.js");
+  const shell = html => { app.innerHTML = `<main class="signin"><h1>Global Visions</h1>${html}</main>`; };
+  shell(`<p>Checking your account…</p>`);
+  let acc;
+  try { acc = await A.account(); } catch (e) { return shell(`<p class="note">Can't reach the server. Check your internet and reload.</p>`); }
+  if (!acc) {
+    shell(`<p class="lead">You are a field agent. Islands need your help.</p>
+      <button class="btn big" id="google">Sign in with your school Google account</button>
+      <p class="small">Use your school email. Other accounts can't join.</p>`);
+    $("#google").onclick = () => A.signInWithGoogle();
+    return;
+  }
+  if (!acc.ok) {
+    await A.signOut();
+    shell(`<p class="note">${esc(acc.email)} isn't a school account. Please sign in with your school email.</p>
+      <button class="btn big" id="again">Try again</button>`);
+    $("#again").onclick = () => schoolSignIn();
+    return;
+  }
+  const m = await A.membership().catch(() => null);
+  // Shared iPads: if this browser holds another student's practice, clear it before this student starts.
+  if (m) { const p = S.profile(); if (!p || p.nick !== m.nick) { S.signOut(); S.signIn(m.nick, m.avatar); } return route(); }
+  const avatars = ["🦊", "🐼", "🐢", "🦉", "🐬", "🦋", "🐯", "🦜", "🐙", "🦔", "🐳", "🦎"];
+  shell(`<p class="lead">Welcome, agent. Join your class.</p>
+    <label>Class code from your teacher <input id="code" maxlength="8" autocomplete="off" autocapitalize="characters" placeholder="e.g. HK7A24"></label>
+    <label>Agent nickname <input id="nick" maxlength="16" autocomplete="off" placeholder="e.g. MangoComet"></label>
+    <p class="small">Use a nickname, not your real name. Only nicknames appear on leaderboards.</p>
+    <p class="label">Choose your agent</p>
+    <div class="avatars">${avatars.map((a, i) => `<button class="av-pick${i ? "" : " on"}" data-a="${a}" aria-label="Avatar ${a}">${a}</button>`).join("")}</div>
+    <p id="msg" class="note" hidden></p>
+    <button class="btn big" id="join">Join class</button>
+    <button class="link" id="out">Use a different account</button>`);
+  let av = avatars[0];
+  app.querySelectorAll(".av-pick").forEach(b => b.onclick = () => { app.querySelectorAll(".av-pick").forEach(x => x.classList.remove("on")); b.classList.add("on"); av = b.dataset.a; });
+  $("#out").onclick = async () => { await A.signOut(); schoolSignIn(); };
+  $("#join").onclick = async () => {
+    $("#join").disabled = true;
+    const r = await A.joinClass($("#code").value, $("#nick").value, av).catch(() => ({ error: "Something went wrong. Please try again." }));
+    $("#join").disabled = false;
+    if (r.error) { $("#msg").textContent = r.error; $("#msg").hidden = false; return; }
+    schoolSignIn();
   };
 }
 
@@ -424,11 +473,16 @@ function me() {
     <h3 class="sec">Colours</h3>
     <section class="card"><div class="seg three">${[["Auto", "auto"], ["Light", "light"], ["Dark", "dark"]].map(([n, v]) => `<button class="segb${(prof.theme || "light") === v ? " on" : ""}" data-theme="${v}">${n}</button>`).join("")}</div>
     <p class="small">Light is the default. Auto follows your phone's setting.</p></section>
-    <button class="btn ghost" id="out">Sign out and reset demo</button>`);
+    ${DEMO ? `<p><a class="btn ghost" href="teacher.html">Teacher view (demo)</a></p>` : ""}
+    <button class="btn ghost" id="out">${DEMO ? "Sign out and reset demo" : "Sign out"}</button>`);
   app.querySelectorAll("[data-theme]").forEach(b => b.onclick = () => { S.updateProfile({ theme: b.dataset.theme }); applyText(); me(); });
   app.querySelectorAll("[data-big]").forEach(b => b.onclick = () => { S.updateProfile({ bigText: b.dataset.big === "true" }); applyText(); me(); });
   app.querySelectorAll("input[name=sup]").forEach(x => x.onchange = () => { S.updateProfile({ support: +x.value, tasks: [] }); play("tap"); });
-  $("#out").onclick = () => { if (confirm("Reset the demo? Your demo progress in this browser will be deleted.")) { S.signOut(); location.hash = ""; route(); } };
+  $("#out").onclick = async () => {
+    if (!confirm(DEMO ? "Reset the demo? Your demo progress in this browser will be deleted." : "Sign out on this device?")) return;
+    if (!DEMO) await (await import("./auth.js")).signOut();
+    S.signOut(); location.hash = ""; route();
+  };
 }
 
 /* ---------------- routing ---------------- */
@@ -442,10 +496,11 @@ function applyText() {
 }
 function route() {
   applyText();
-  if (!S.profile()) return signIn();
+  if (!S.profile()) return DEMO ? signIn() : schoolSignIn();
   soundUser(S.profile().nick);
   (ROUTES[location.hash.replace(/^#/, "")] || home)();
 }
 window.addEventListener("hashchange", route);
 document.addEventListener("click", e => { if (e.target.closest("a.btn, a.tile, a.island, button.btn")) play("tap"); });
-route();
+// Real mode checks the school account on every start; demo mode goes straight in.
+if (DEMO) route(); else schoolSignIn();

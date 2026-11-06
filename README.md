@@ -9,7 +9,7 @@ skills through missions, a Think Gym and games, earning XP, ranks and passport s
 ## Try it
 
 Open `index.html` through any static web server (for example `python3 -m http.server`), or turn on GitHub Pages
-for this repo. Open `teacher.html` for the teacher view.
+for this repo. Open `teacher.html` for the teacher view (there is also a link on the sign-in page and the Me page). To switch on school Google sign-in and class codes, follow docs/setup-school-login.md.
 
 ## What is in this prototype
 
