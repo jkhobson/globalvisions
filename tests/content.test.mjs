@@ -59,3 +59,20 @@ test("Research questions offered as the right answer are open, not yes/no", () =
     if (right.endsWith("?")) assert.ok(!/^(is|are|do|does|did|should|can|could|will|would|has|have|was|were)\b/i.test(right), `${it.id}: right answer is a yes/no question`);
   });
 });
+
+test("every wrong option says why it is wrong, without giving the answer away", () => {
+  for (const it of ITEMS) {
+    assert.ok(!("why" in it.options[0]), `${it.id}: the right option needs no why`);
+    for (const o of it.options.slice(1)) {
+      assert.ok(typeof o.why === "string" && o.why.length >= 15 && o.why.length <= 140, `${it.id}: "${o.t}" needs a short why`);
+      assert.ok(!o.why.includes(it.options[0].t), `${it.id}: a why must not quote the right answer`);
+    }
+  }
+});
+
+test("supabase/content.sql is up to date with the content", async () => {
+  const { readFileSync } = await import("node:fs");
+  const { contentSQL } = await import("../tools/content-sql.mjs");
+  assert.equal(readFileSync(new URL("../supabase/content.sql", import.meta.url), "utf8"), contentSQL(),
+    "Run: node tools/content-sql.mjs > supabase/content.sql");
+});
