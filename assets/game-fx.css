@@ -1,0 +1,29 @@
+/* In-game effects (game-fx.js) and the HUD chips. */
+.arena{position:relative;overflow:hidden;border-radius:18px;touch-action:manipulation;user-select:none;-webkit-user-select:none}
+.ghud{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px}
+.hchip{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:999px;font-weight:800;font-variant-numeric:tabular-nums}
+.hchip.pts{background:#1B2C4A;color:#fff} .hchip.pts b{color:#FFD54A}
+.hchip.combo{background:linear-gradient(135deg,#FF8A3D,#F0456A);color:#fff}
+.hchip.bump{animation:bump .3s ease-out}
+@keyframes bump{40%{scale:1.18}}
+.arena.hurt{animation:hurt .4s}
+.arena.hurt::before{content:"";position:absolute;inset:0;z-index:4;pointer-events:none;box-shadow:inset 0 0 0 6px rgba(240,70,70,.75),inset 0 0 40px rgba(240,70,70,.5);animation:fade .5s forwards}
+.arena.flash::after{content:"";position:absolute;inset:0;z-index:4;pointer-events:none;background:radial-gradient(circle,rgba(255,255,255,.9),rgba(255,230,140,.4));animation:fade .6s forwards}
+@keyframes hurt{20%{translate:-7px}45%{translate:6px}70%{translate:-3px}}
+@keyframes fade{to{opacity:0}}
+.gcount{position:absolute;inset:0;z-index:5;display:grid;place-items:center;background:rgba(8,18,40,.35);backdrop-filter:blur(1px)}
+.gcount span{font:800 clamp(3rem,16vw,5rem)/1 var(--f-head, "Nunito", system-ui, sans-serif);color:#fff;text-shadow:0 4px 0 rgba(0,0,0,.25),0 0 30px rgba(255,213,74,.8);animation:count .65s ease-out}
+@keyframes count{0%{scale:2.2;opacity:0}35%{scale:.92;opacity:1}55%{scale:1.05}100%{scale:1}}
+.gfloat{position:absolute;z-index:6;translate:-50% -50%;pointer-events:none;font:800 1.35rem var(--f-head, "Nunito", system-ui, sans-serif);color:#FFD54A;
+  text-shadow:0 2px 0 #8A5A00,0 0 10px rgba(0,0,0,.35);animation:floatup .95s ease-out forwards}
+.gfloat.bad{color:#FF6B6B;text-shadow:0 2px 0 #7A1F1F}
+@keyframes floatup{0%{opacity:0;transform:translateY(8px) scale(.6)}20%{opacity:1;transform:translateY(0) scale(1.15)}100%{opacity:0;transform:translateY(-46px) scale(1)}}
+.gpart{position:absolute;z-index:6;width:8px;height:8px;margin:-4px 0 0 -4px;border-radius:50%;pointer-events:none;animation:fly .7s cubic-bezier(.2,.7,.3,1) forwards}
+.gpart:nth-child(3n){border-radius:2px;width:7px;height:10px}
+@keyframes fly{to{transform:translate(var(--dx),var(--dy)) rotate(200deg) scale(.3);opacity:0}}
+/* Level-up strip on a results page: <div class="lvlup pop"><span class="lvl-from">B1</span><span>→</span><span class="lvl-to">B2</span>...</div> */
+.lvlup{display:flex;align-items:center;flex-wrap:wrap;gap:10px 14px;background:#FFF6D6;border:2px solid #E9A80F;border-radius:14px;padding:14px 16px;color:#3A2A00}
+.xpgain{color:#C98A00;font-weight:800}
+@media (prefers-reduced-motion:no-preference){ .pop{animation:pop .25s ease-out} @keyframes pop{from{transform:translateY(4px)}to{transform:none}}
+  .xpgain{animation:pulse .6s ease-out} @keyframes pulse{0%{transform:scale(1.4)}100%{transform:scale(1)}} }
+@media (prefers-reduced-motion:reduce){ .gcount span,.hchip.bump,.arena.hurt{animation:none} .gpart,.arena.flash::after,.arena.hurt::before{display:none} .gfloat{animation-duration:.01s;animation-delay:.6s} }
