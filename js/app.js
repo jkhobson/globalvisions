@@ -242,21 +242,18 @@ function runItems(ids, { title, onDone, pick, slots: given } = {}) {
     try { opts = await KEY.order(it, slots[answers.length] ?? 0); }
     catch (e) { box.innerHTML = `<div class="card">${offlineNote}</div>`; box.querySelector("#retry").onclick = () => show(); return; }
     const wrongs = [];                       // the student's wrong choices and why, for the review
-    const doorsOn = S.profile().doors !== false; let walker = null;   // answer doors: walk the agent to a door to choose
     function draw() {
       box.innerHTML = `<p class="kicker">${title || ""} · ${answers.length + 1} of ${total}</p>
         <div class="dots">${Array.from({ length: total }, (_, k) => `<i class="${k < answers.length ? (answers[k].support === "none" ? "ok" : answers[k].support === "hint" ? "mid" : "no") : k === answers.length ? "now" : ""}"></i>`).join("")}</div>
         ${it.source ? sourceCard(it.source, wrap) : ""}
         <div class="q card"><p class="stem">${richText(it.stem[wrap.stem], "off")}</p>
           ${canSpeak ? `<button class="icon say" data-say="q" aria-label="Read the question aloud">🔊</button>` : ""}
-          <div class="opts${doorsOn ? " lettered" : ""}">${opts.map((o, n) => `<button class="opt${picks.includes(o.k) ? " wrong" : ""}" data-k="${o.k}" ${picks.includes(o.k) ? "disabled" : ""}>${doorsOn ? `<b class="letter">${LETTERS[n]}</b>` : ""}${esc(o.t)}</button>`).join("")}</div>
-          ${doorsOn ? doorStage(opts, picks) : ""}
+          <div class="opts">${opts.map(o => `<button class="opt${picks.includes(o.k) ? " wrong" : ""}" data-k="${o.k}" ${picks.includes(o.k) ? "disabled" : ""}>${esc(o.t)}</button>`).join("")}</div>
           <div class="fb" aria-live="polite"></div></div>`;
       box.querySelectorAll(".gl").forEach(b => b.onclick = () => { help++; play("info"); glossaryPop(b); });
       const wh = box.querySelector("#wordhelp"); if (wh) wh.onclick = () => { help++; wrap = { ...wrap, glossary: "tap" }; draw(); };
       box.querySelectorAll(".say").forEach(b => b.onclick = () => { help++; say(b.dataset.say === "src" ? SOURCES[it.source][wrap.text].replace(/\*\*/g, "") : it.stem[wrap.stem]); });
-      if (doorsOn) walker = doorWalker(box, k => choose(k, box.querySelector(`.opt[data-k="${k}"]`)));
-      else box.querySelectorAll(".opt").forEach(b => b.onclick = () => choose(+b.dataset.k, b));
+      box.querySelectorAll(".opt").forEach(b => b.onclick = () => choose(+b.dataset.k, b));
     }
     const settle = () => requestAnimationFrame(() => bring(box.querySelector(".fb").lastElementChild));
     let busy = false;
@@ -274,14 +271,14 @@ function runItems(ids, { title, onDone, pick, slots: given } = {}) {
       picks.push(k); if (picks.length === 1) ms = t;
       const o = { t: (opts.find(x => x.k === k) || {}).t, why: r.why, trap: r.trap, b: r.b };
       if (r.right) {
-        play("ok"); btn.classList.add("right"); if (walker) walker.open(k);
+        play("ok"); btn.classList.add("right");
         const barrier = simplified && tries === 1 ? "language" : undefined;
         const sup = tries === 0 || barrier ? "none" : "hint";
         if (barrier) traps = [];           // a language miss is not a thinking trap
         finish({ support: sup, barrier }, `<p class="good">✔ ${tries === 0 ? "Right first time!" : barrier ? "Right! The English was the tricky part, not your thinking." : "Right!"}</p><p>${esc(r.explain || "")}</p><p class="skilltag">${skillLine(it)}</p>`);
         return;
       }
-      play("bad"); btn.classList.add("wrong"); btn.disabled = true; tries++; if (walker) walker.shut(k);
+      play("bad"); btn.classList.add("wrong"); btn.disabled = true; tries++;
       wrongs.push({ t: o.t, why: o.why });
       if (o.trap) traps.push(o.trap); if (o.b) gap = o.b;
       if (tries === 1 && wrap.simpler && !simplified) {
@@ -302,7 +299,7 @@ function runItems(ids, { title, onDone, pick, slots: given } = {}) {
       finish({ support: "explained" }, `${why}<p class="info">Not this time. We won't show the answer: you'll meet this skill again in a new question.</p>${o.trap && TRAPS[o.trap] ? `<p class="small">Trap to watch: <b>${TRAPS[o.trap].name}</b>. ${TRAPS[o.trap].tip}</p>` : ""}`);
     }
     function finish(res, html) {
-      box.querySelectorAll(".opt").forEach(b => b.disabled = true); if (walker) walker.stop();
+      box.querySelectorAll(".opt").forEach(b => b.disabled = true);
       const a = { item: it.id, block: it.block, demand: it.demand, first_try: res.support === "none" && !res.barrier, ...res, traps, gap: res.support === "explained" ? gap : null, help: help - helpAtStart, picks, simplified, ms, wrongs };
       answers.push(a); i++;
       // Two quick wrong first taps in one set: a gentle nudge to read first.
@@ -333,73 +330,6 @@ function runItems(ids, { title, onDone, pick, slots: given } = {}) {
   }
   show();
   return box;
-}
-/* ---------------- answer doors: walk your agent to a door to choose ---------------- */
-// Each option has a lettered door. Students steer their agent with the arrow pad, the arrow keys, by dragging,
-// or by tapping a door or an option. Standing at a door shows an "Enter" button, so every answer is a deliberate step.
-const LETTERS = "ABCD";
-const DOOR_X = n => 14 + n * 24;                         // door centres across the stage, in %
-function doorStage(opts, picks) {
-  const av = (S.profile() || {}).avatar || "🕵️";
-  return `<div class="stage" aria-label="Walk your agent to a door to choose an answer">
-    ${opts.map((o, n) => `<button class="door${picks.includes(o.k) ? " shut" : ""}" data-k="${o.k}" style="left:${DOOR_X(n)}%" aria-label="Door ${LETTERS[n]}: ${esc(o.t)}" ${picks.includes(o.k) ? "disabled" : ""}>
-      <span class="frame"><span class="panel"><b>${LETTERS[n]}</b></span></span></button>`).join("")}
-    <span class="agent" style="left:50%;top:78%" aria-hidden="true"><span class="bob">${esc(av)}</span></span>
-  </div>
-  <div class="walkbar">
-    <div class="pad" aria-label="Move your agent">${[["left", "◀"], ["up", "▲"], ["down", "▼"], ["right", "▶"]].map(([d, i]) => `<button class="padb" data-d="${d}" aria-label="Move ${d}">${i}</button>`).join("")}</div>
-    <button class="btn enter" disabled>Walk to a door</button>
-  </div>`;
-}
-function doorWalker(box, onEnter) {
-  const stage = box.querySelector(".stage"), agent = stage.querySelector(".agent"), enter = box.querySelector(".enter");
-  const doors = [...stage.querySelectorAll(".door")];
-  let x = 50, y = 78, at = null, live = true, walkT = 0;
-  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
-  function place(nx, ny, quick) {
-    x = clamp(nx, 6, 94); y = clamp(ny, 46, 86);
-    agent.classList.toggle("walking", !quick); agent.style.left = x + "%"; agent.style.top = y + "%";
-    clearTimeout(walkT); walkT = setTimeout(() => agent.classList.remove("walking"), 420);
-    agent.classList.toggle("flip", nx < x - 0.1);
-    check();
-  }
-  function check() {
-    const d = y <= 56 ? doors.find(d => !d.disabled && Math.abs(DOOR_X(doors.indexOf(d)) - x) < 9) : null;
-    at = d ? +d.dataset.k : null;
-    doors.forEach(o => o.classList.toggle("near", o === d));
-    box.querySelectorAll(".opt").forEach(o => o.classList.toggle("near", d && +o.dataset.k === at));
-    enter.disabled = !live || at === null;
-    enter.textContent = at === null ? "Walk to a door" : `Enter door ${LETTERS[doors.indexOf(d)]}`;
-  }
-  const toDoor = k => { const n = doors.findIndex(d => +d.dataset.k === k); if (n >= 0 && !doors[n].disabled) place(DOOR_X(n), 52); };
-  doors.forEach(d => d.onclick = e => { e.stopPropagation(); if (live) toDoor(+d.dataset.k); });
-  box.querySelectorAll(".opt").forEach(o => o.onclick = () => { if (live) { toDoor(+o.dataset.k); stage.scrollIntoView({ block: "nearest", behavior: "smooth" }); } });
-  const step = { left: [-8, 0], right: [8, 0], up: [0, -10], down: [0, 10] };
-  box.querySelectorAll(".padb").forEach(b => b.onclick = () => { if (live) place(x + step[b.dataset.d][0], y + step[b.dataset.d][1]); });
-  // drag the agent, or tap the ground to walk there
-  let dragging = false;
-  const toPoint = (e, quick) => { const r = stage.getBoundingClientRect(); place((e.clientX - r.left) / r.width * 100, (e.clientY - r.top) / r.height * 100, quick); };
-  stage.addEventListener("pointerdown", e => { if (!live || e.target.closest(".door")) return; dragging = e.target.closest(".agent") !== null; toPoint(e, dragging); if (dragging) stage.setPointerCapture(e.pointerId); });
-  stage.addEventListener("pointermove", e => { if (dragging) toPoint(e, true); });
-  stage.addEventListener("pointerup", () => { dragging = false; });
-  const keys = e => {
-    if (!live || !document.body.contains(stage)) return document.removeEventListener("keydown", keys);
-    if (/^(INPUT|TEXTAREA)$/.test(document.activeElement.tagName)) return;
-    const d = { ArrowLeft: "left", ArrowRight: "right", ArrowUp: "up", ArrowDown: "down" }[e.key];
-    if (d) { e.preventDefault(); place(x + step[d][0], y + step[d][1]); }
-    else if (e.key === "Enter" && at !== null && document.activeElement === document.body) { e.preventDefault(); enter.click(); }
-  };
-  document.addEventListener("keydown", keys);
-  enter.onclick = () => { if (live && at !== null) onEnter(at); };
-  check();
-  return {
-    open(k) { const d = doors.find(d => +d.dataset.k === k); if (d) d.classList.add("open"); agent.classList.add("through"); },
-    shut(k) {
-      const d = doors.find(d => +d.dataset.k === k); if (d) { d.classList.add("shut"); d.disabled = true; }
-      setTimeout(() => place(50, 78), 350);             // bounce back to the start
-    },
-    stop() { live = false; check(); box.querySelectorAll(".padb").forEach(b => b.disabled = true); doors.forEach(d => d.disabled = true); }
-  };
 }
 function skillLine(it) {
   const b = BLOCKS[it.block];
@@ -642,16 +572,12 @@ function me() {
     <p class="small">The app also adjusts this for you. More help never costs XP.</p></section>
     <h3 class="sec">Text size</h3>
     <section class="card"><div class="seg">${[["Normal", false], ["Large", true]].map(([n, v]) => `<button class="segb${!!prof.bigText === v ? " on" : ""}" data-big="${v}">${n}</button>`).join("")}</div></section>
-    <h3 class="sec">Answer doors</h3>
-    <section class="card"><div class="seg">${[["Walk to doors", true], ["Just tap", false]].map(([n, v]) => `<button class="segb${(prof.doors !== false) === v ? " on" : ""}" data-doors="${v}">${n}</button>`).join("")}</div>
-    <p class="small">Walk your agent to a door to choose an answer, or just tap the answer.</p></section>
     <h3 class="sec">Colours</h3>
     <section class="card"><div class="seg three">${[["Auto", "auto"], ["Light", "light"], ["Dark", "dark"]].map(([n, v]) => `<button class="segb${(prof.theme || "light") === v ? " on" : ""}" data-theme="${v}">${n}</button>`).join("")}</div>
     <p class="small">Light is the default. Auto follows your phone's setting.</p></section>
     ${DEMO ? `<p><a class="btn ghost" href="teacher.html">Teacher view (demo)</a></p>` : ""}
     <button class="btn ghost" id="out">${DEMO ? "Sign out and reset demo" : "Sign out"}</button>`);
   app.querySelectorAll("[data-theme]").forEach(b => b.onclick = () => { S.updateProfile({ theme: b.dataset.theme }); applyText(); me(); });
-  app.querySelectorAll("[data-doors]").forEach(b => b.onclick = () => { S.updateProfile({ doors: b.dataset.doors === "true" }); play("tap"); me(); });
   app.querySelectorAll("[data-big]").forEach(b => b.onclick = () => { S.updateProfile({ bigText: b.dataset.big === "true" }); applyText(); me(); });
   app.querySelectorAll("input[name=sup]").forEach(x => x.onchange = () => { S.updateProfile({ support: +x.value, tasks: [] }); if (REMOTE) REMOTE.setSupport(+x.value).catch(() => {}); play("tap"); });
   $("#out").onclick = async () => {
