@@ -9,6 +9,10 @@ create table if not exists public.items (
   options jsonb not null                      -- one entry per option, in data order (first = right): { trap, b }
 );
 create table if not exists public.trust_cards (idx int primary key, ok boolean not null, trap text);
+-- The answer key lives only here: options are stored in the same alphabetical order as js/content/fizz-public.js,
+-- each as { right, trap, b, why }. The school website never gets it.
+alter table public.items add column if not exists explain text not null default '';
+alter table public.trust_cards add column if not exists why text not null default '';
 alter table public.blocks enable row level security;
 alter table public.items enable row level security;
 alter table public.trust_cards enable row level security;
@@ -46,11 +50,100 @@ create or replace function public.school_week_start(t timestamptz) returns times
   select (date_trunc('week', (t at time zone 'UTC') + interval '7 hours') - interval '7 hours') at time zone 'UTC'
 $$;
 
+/* ---------------- checking one tap (school mode) ---------------- */
+-- The app doesn't know the right answers. Each tap is sent here: the server says right or wrong, gives the reason
+-- for a wrong choice, and records the tap. save_attempt then marks the activity from these records, not from the app.
+create table if not exists public.checks (
+  id bigint generated always as identity primary key,
+  user_id uuid not null references auth.users on delete cascade,
+  item_id text not null,                      -- a question id, or 'trust-N' for a game card
+  pick int, is_right boolean not null, ms int not null default 0, simplified boolean not null default false,
+  attempt_id bigint references public.attempts(id) on delete set null,   -- set when save_attempt uses it
+  created_at timestamptz not null default now()
+);
+create index if not exists checks_open on public.checks (user_id, item_id) where attempt_id is null;
+alter table public.checks enable row level security;   -- no policies: only these functions use it
+create table if not exists public.deals (user_id uuid primary key references auth.users on delete cascade, slots int[] not null default '{}');
+alter table public.deals enable row level security;
+
+-- Where the right answer goes for this student's next question: spread evenly, never 3 in a row (like dealSlots).
+-- Returns the option positions (in the public list) in the order to show them.
+create or replace function public.deal_options(p_item text) returns int[]
+language plpgsql security definer set search_path = public as $$
+declare me uuid := auth.uid(); it record; hist int[]; n int; slot int; r int; order_ int[] := '{}'; k int;
+begin
+  if public.my_class_id() is null then raise exception 'not in a class'; end if;
+  select * into it from items where id = p_item; if it is null then raise exception 'unknown question'; end if;
+  n := jsonb_array_length(it.options);
+  select slots into hist from deals where user_id = me; hist := coalesce(hist, '{}');
+  -- the least-used slots in the last 8 questions, leaving out one that would make 3 in a row
+  select s into slot from generate_series(0, n - 1) s
+    where not (cardinality(hist) >= 2 and hist[cardinality(hist)] = s and hist[cardinality(hist) - 1] = s)
+    order by (select count(*) from unnest(hist[greatest(1, cardinality(hist) - 7):]) h where h = s), random() limit 1;
+  insert into deals (user_id, slots) values (me, array[slot]) on conflict (user_id) do update set slots = (deals.slots || slot)[greatest(1, cardinality(deals.slots) - 6):];
+  select x.ord - 1 into r from jsonb_array_elements(it.options) with ordinality x(o, ord) where (x.o->>'right')::boolean;
+  for k in select (x.ord - 1)::int from jsonb_array_elements(it.options) with ordinality x(o, ord) where not (x.o->>'right')::boolean order by random() loop
+    order_ := order_ || k;
+  end loop;
+  return order_[1:slot] || r || order_[slot + 1:];
+end $$;
+
+-- One tap on an option. Two wrong taps on a question, then it's locked until the activity is saved.
+create or replace function public.check_answer(p_item text, p_pick int, p_ms int default 0, p_simplified boolean default false) returns jsonb
+language plpgsql security definer set search_path = public as $$
+declare me uuid := auth.uid(); it record; o jsonb; prev record; wrongs int;
+begin
+  if public.my_class_id() is null or not public.school_ok() then raise exception 'not in a class'; end if;
+  select * into it from items where id = p_item; if it is null then raise exception 'unknown question'; end if;
+  if p_pick is null or p_pick < 0 or p_pick >= jsonb_array_length(it.options) then raise exception 'bad pick'; end if;
+  if (select count(*) from checks where user_id = me and created_at > now() - interval '1 day') >= 600 then raise exception 'daily limit'; end if;
+  o := it.options -> p_pick;
+  select * into prev from checks where user_id = me and item_id = p_item and attempt_id is null and pick = p_pick and created_at > now() - interval '3 hours' limit 1;
+  if not found then
+    if exists (select 1 from checks where user_id = me and item_id = p_item and attempt_id is null and is_right and created_at > now() - interval '3 hours') then
+      return jsonb_build_object('locked', true);
+    end if;
+    select count(*) into wrongs from checks where user_id = me and item_id = p_item and attempt_id is null and not is_right and created_at > now() - interval '3 hours';
+    if wrongs >= 2 then return jsonb_build_object('locked', true); end if;
+    insert into checks (user_id, item_id, pick, is_right, ms, simplified)
+      values (me, p_item, p_pick, (o->>'right')::boolean, least(greatest(coalesce(p_ms, 0), 0), 3600000), coalesce(p_simplified, false));
+  end if;
+  if (o->>'right')::boolean then return jsonb_build_object('right', true, 'explain', it.explain); end if;
+  return jsonb_build_object('right', false, 'why', o->>'why', 'trap', o->>'trap', 'b', o->>'b');
+end $$;
+
+-- Trust or Bust: 8 cards (4 to trust, 4 to bust), the ones this student has seen least.
+create or replace function public.deal_cards() returns int[]
+language plpgsql security definer set search_path = public as $$
+declare me uuid := auth.uid(); res int[];
+begin
+  if public.my_class_id() is null then raise exception 'not in a class'; end if;
+  with seen as (select substring(x->>'item' from '^trust-([0-9]+)$')::int idx, count(*) n
+                from attempts t, jsonb_array_elements(t.answers) x where t.user_id = me and t.text_id = 'game-trust' group by 1),
+       ranked as (select c.idx, c.ok, row_number() over (partition by c.ok order by coalesce(s.n, 0), random()) rn
+                  from trust_cards c left join seen s on s.idx = c.idx)
+  select array_agg(idx order by random()) into res from ranked where rn <= 4;
+  return res;
+end $$;
+-- One game card. v is null when the timer ran out. Only the first answer to a card counts.
+create or replace function public.check_card(p_idx int, p_v boolean) returns jsonb
+language plpgsql security definer set search_path = public as $$
+declare me uuid := auth.uid(); c record; ok boolean;
+begin
+  if public.my_class_id() is null or not public.school_ok() then raise exception 'not in a class'; end if;
+  select * into c from trust_cards where idx = p_idx; if c is null then raise exception 'unknown card'; end if;
+  ok := coalesce(p_v = c.ok, false);
+  if not exists (select 1 from checks where user_id = me and item_id = 'trust-' || p_idx and attempt_id is null and created_at > now() - interval '3 hours') then
+    insert into checks (user_id, item_id, pick, is_right) values (me, 'trust-' || p_idx, case when p_v is null then null when p_v then 1 else 0 end, ok);
+  end if;
+  return jsonb_build_object('right', ok, 'why', c.why, 'trap', case when ok then null else c.trap end);
+end $$;
+
 /* ---------------- save one finished activity ---------------- */
 -- The app sends what the student tapped. The server decides what was right, and how much XP it earns.
---   question answers: { item, picks: [option positions in data order, 0 = right], simplified, help }
+--   question answers: { item, help }   (what was tapped comes from check_answer's records, not from the app)
 --   reflections:      { item: 'fizz-refl-N', reflection: true, text }
---   game cards:       { item: 'trust-N', v: true | false | null }
+--   game cards:       { item: 'trust-N' }  (the first check_card answer counts)
 create or replace function public.save_attempt(p_client_id text, p_text_id text, p_answers jsonb)
 returns int language plpgsql security definer set search_path = public as $$
 declare
@@ -58,6 +151,7 @@ declare
   pos int; simp boolean; sup text; barrier text; traps jsonb; gap text; o jsonb;
   clean jsonb := '[]'::jsonb; raw int := 0; xp int; n int; is_game boolean; is_gym boolean;
   combo int := 0; pts int := 0; used int; today date := public.school_day(now());
+  ids bigint[]; used_checks bigint[] := '{}'; picks jsonb; first_ms int; new_id bigint;
   first_xp int[] := array[10, 15, 20, 25];
 begin
   select class_id into cls from students where user_id = me;
@@ -76,7 +170,9 @@ begin
     if is_game then
       select * into card from trust_cards where idx = nullif(substring(a->>'item' from '^trust-([0-9]+)$'), '')::int;
       if card is null then raise exception 'unknown card'; end if;
-      if (a->'v') is not null and jsonb_typeof(a->'v') = 'boolean' and (a->>'v')::boolean = card.ok then
+      select array_agg(id order by id) into ids from checks where user_id = me and item_id = 'trust-' || card.idx and attempt_id is null and created_at > now() - interval '3 hours';
+      used_checks := used_checks || coalesce(ids, '{}');
+      if (select is_right from checks where id = ids[1]) then
         combo := combo + 1; pts := pts + 100 + 20 * (combo - 1); sup := 'none';
       else combo := 0; sup := 'explained'; end if;
       clean := clean || jsonb_build_object('item', a->>'item', 'game', true, 'support', sup,
@@ -89,25 +185,29 @@ begin
     else
       select * into it from items where id = a->>'item';
       if it is null then raise exception 'unknown question'; end if;
-      simp := coalesce((a->>'simplified')::boolean, false);
-      if jsonb_typeof(coalesce(a->'picks', '[]'::jsonb)) <> 'array' or jsonb_array_length(coalesce(a->'picks', '[]'::jsonb)) > 4 then raise exception 'bad picks'; end if;
+      -- the taps the server recorded for this question since it was last saved
+      select array_agg(id order by id), coalesce(jsonb_agg(pick order by id), '[]'::jsonb), bool_or(simplified), (array_agg(ms order by id))[1]
+        into ids, picks, simp, first_ms
+        from checks where user_id = me and item_id = it.id and attempt_id is null and created_at > now() - interval '3 hours';
+      used_checks := used_checks || coalesce(ids, '{}'); simp := coalesce(simp, false);
       -- position (1-based) of the first tap on the right option; null if never tapped
-      select min(ord) into pos from jsonb_array_elements_text(coalesce(a->'picks', '[]'::jsonb)) with ordinality as x(k, ord) where x.k = '0';
+      select min(ord) into pos from jsonb_array_elements_text(picks) with ordinality as x(k, ord)
+        where (it.options -> (x.k::int) ->> 'right')::boolean;
       barrier := null;
       if pos = 1 then sup := 'none';
       elsif simp and pos = 2 then sup := 'none'; barrier := 'language';
       elsif not simp and pos = 2 then sup := 'hint';     -- the app allows two wrong taps, then moves on without showing the answer
       else sup := 'explained'; end if;
       traps := '[]'::jsonb; gap := null;
-      for o in select it.options -> (x.k::int) from jsonb_array_elements_text(coalesce(a->'picks', '[]'::jsonb)) as x(k)
-               where x.k ~ '^[1-9]$' and x.k::int < jsonb_array_length(it.options) loop
+      for o in select it.options -> (x.k::int) from jsonb_array_elements_text(picks) as x(k)
+               where not (it.options -> (x.k::int) ->> 'right')::boolean loop
         if barrier is null and o->>'trap' is not null then traps := traps || jsonb_build_array(o->>'trap'); end if;
         if o->>'b' is not null then gap := o->>'b'; end if;
       end loop;
       clean := clean || jsonb_build_object('item', it.id, 'block', it.block, 'demand', it.demand, 'support', sup, 'barrier', barrier,
         'first_try', sup = 'none' and barrier is null, 'traps', traps, 'gap', case when sup = 'explained' then gap end,
         'help', least(greatest(coalesce((a->>'help')::int, 0), 0), 50),
-        'picks', coalesce(a->'picks', '[]'::jsonb), 'ms', least(greatest(coalesce((a->>'ms')::int, 0), 0), 3600000));
+        'picks', picks, 'ms', coalesce(first_ms, 0));
       -- A question met before earns no XP again, so a student can't farm XP by repeating questions they've seen.
       if exists (select 1 from attempts t, jsonb_array_elements(t.answers) x where t.user_id = me and x->>'item' = it.id) then continue; end if;
       raw := raw + case when sup = 'none' and barrier = 'language' then round(first_xp[it.demand + 1] / 2.0)::int
@@ -128,7 +228,9 @@ begin
   end if;
 
   insert into attempts (user_id, class_id, client_id, text_id, mode, answers, xp)
-  values (me, cls, left(p_client_id, 64), p_text_id, case when is_game then 'game' when is_gym then 'practice' else 'mission' end, clean, xp);
+  values (me, cls, left(p_client_id, 64), p_text_id, case when is_game then 'game' when is_gym then 'practice' else 'mission' end, clean, xp)
+  returning id into new_id;
+  update checks set attempt_id = new_id where id = any(used_checks);
   return xp;
 end $$;
 
@@ -180,6 +282,14 @@ begin
     from students s where s.class_id = cls;
 end $$;
 
+revoke all on function public.deal_options(text) from public, anon;
+grant execute on function public.deal_options(text) to authenticated;
+revoke all on function public.check_answer(text, int, int, boolean) from public, anon;
+grant execute on function public.check_answer(text, int, int, boolean) to authenticated;
+revoke all on function public.deal_cards() from public, anon;
+grant execute on function public.deal_cards() to authenticated;
+revoke all on function public.check_card(int, boolean) from public, anon;
+grant execute on function public.check_card(int, boolean) to authenticated;
 revoke all on function public.save_attempt(text, text, jsonb) from public, anon;
 grant execute on function public.save_attempt(text, text, jsonb) to authenticated;
 revoke all on function public.class_board() from public, anon;

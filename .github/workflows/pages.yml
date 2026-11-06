@@ -1,0 +1,41 @@
+# Publishes the student app to GitHub Pages. It copies only what a student's browser needs.
+# In school mode (Supabase filled in, in js/config.js) it leaves out js/content/fizz.js, the full content with the
+# answer key, so students can't read the answers. The server holds the key (supabase/content.sql).
+# Runs when you press "Run workflow" on the Actions tab, or on every merge to main once the
+# repository variable PAGES_ON is set to true. See docs/setup-school-login.md.
+name: Publish the student app
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: pages
+  cancel-in-progress: true
+jobs:
+  publish:
+    if: github.event_name == 'workflow_dispatch' || vars.PAGES_ON == 'true'
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Copy only the files students need
+        run: |
+          mkdir site
+          cp -r index.html teacher.html manifest.webmanifest assets js site/
+          if grep -q 'SUPABASE_URL = "";' js/config.js; then
+            echo "Demo mode: no server, so the demo keeps its own content."
+          else
+            rm site/js/content/fizz.js
+            echo "School mode: answer key left out."
+          fi
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+      - id: deploy
+        uses: actions/deploy-pages@v4
