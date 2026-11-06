@@ -218,3 +218,20 @@ a.island { border-color: var(--good); }
 @keyframes walk { from { transform: translateY(0) rotate(-6deg); } to { transform: translateY(-5px) rotate(6deg); } }
 @keyframes shake { 25% { transform: translateX(-4px); } 75% { transform: translateX(4px); } }
 @media (prefers-reduced-motion: reduce) { .agent, .door .panel { transition: none; } .agent.walking .bob, .door.shut .panel { animation: none; } }
+
+/* ---------------- Harvest Key island map ---------------- */
+.hero .btn.ghost.light { background: transparent; color: #fff; border: 2px solid rgb(255 255 255 / .7); box-shadow: none; }
+.isle { position: relative; aspect-ratio: 4 / 5; max-height: 70vh; margin: 10px auto; border-radius: 20px; overflow: hidden; touch-action: none; user-select: none;
+  background: radial-gradient(ellipse 46% 44% at 50% 52%, #d9c38a 0 80%, transparent 81%), radial-gradient(ellipse 50% 48% at 50% 52%, #7fc28b 0 92%, transparent 93%), var(--sea);
+  border: 2px solid var(--line); }
+.isle::before { content: ""; position: absolute; inset: 14% 12%; border-radius: 45%;
+  background: radial-gradient(circle at 30% 30%, #8fd19a 0 18%, transparent 19%), radial-gradient(circle at 70% 65%, #8fd19a 0 14%, transparent 15%); opacity: .7; }
+.spot { position: absolute; transform: translate(-50%, -50%); display: grid; justify-items: center; gap: 2px; border: 0; background: none; color: #1d2a1d; cursor: pointer; z-index: 1; width: 22%; padding: 0; }
+.spot .si { position: relative; font-size: 1.9rem; line-height: 1; filter: drop-shadow(0 3px 2px rgb(0 0 0 / .25)); }
+.spot small { color: #1d2a1d; font-weight: 700; font-size: .68rem; line-height: 1.1; background: rgb(255 255 255 / .88); border-radius: 6px; padding: 1px 5px; text-align: center; }
+.spot.found .si::after { content: "✔"; position: absolute; right: -10px; top: -6px; font-size: .7rem; color: #fff; background: var(--good); border-radius: 50%; padding: 1px 4px; }
+.spot.near small { background: var(--accent); color: #1e1400; }
+.spot.near .si { transform: scale(1.2); transition: transform .2s; }
+.isle .agent { font-size: 2rem; z-index: 2; }
+.casefile { display: flex; flex-wrap: wrap; gap: 6px; }
+@media (prefers-reduced-motion: reduce) { .spot.near .si { transition: none; } }
