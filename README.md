@@ -21,6 +21,8 @@ for this repo. Open `teacher.html` for the teacher view.
   At Light and Open, a wrong answer first gets "Say it simpler"; right after that counts as a language barrier, not a thinking miss.
 - **Thinking traps** on every wrong option, a trap tracker, and adaptive Think Gym practice.
 - **Trust or Bust** game, leaderboards (nicknames only, weekly reset, growth board, class goal), Agent ID, passport.
+- **Phone first**: bottom tab bar (Map, Gym, Game, Ranks, Me), feedback and Next button scroll into view,
+  Normal/Large text switch, a short how-to-play card on first visit, and it can be added to the home screen like an app.
 - **Teacher view**: both dials side by side, block heat map, top trap per student, island and leaderboard switches.
 
 ## How it is built

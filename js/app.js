@@ -28,11 +28,22 @@ function topbar() {
     <button class="icon" id="snd" aria-label="Sound on or off">${soundOn() ? "🔊" : "🔈"}</button>
   </header>`;
 }
-function page(html, { back = true } = {}) {
-  app.innerHTML = topbar() + `<main>${back ? `<a class="back" href="#/">← Map</a>` : ""}${html}</main>`;
+// Bottom tab bar: one thumb reaches everything on a phone.
+const TABS = [["#/", "🗺️", "Map"], ["#/gym", "🏋️", "Gym"], ["#/game", "🕵️", "Game"], ["#/board", "🏆", "Ranks"], ["#/me", "🪪", "Me"]];
+function tabbar() {
+  const h = location.hash || "#/", now = h === "#/mission" || h === "#" ? "#/" : h;
+  return `<nav class="tabs" aria-label="Main">${TABS.map(([href, ic, name]) =>
+    `<a href="${href}" class="${now === href ? "on" : ""}" ${now === href ? 'aria-current="page"' : ""}><span aria-hidden="true">${ic}</span>${name}</a>`).join("")}</nav>`;
+}
+function page(html) {
+  app.innerHTML = topbar() + `<main>${html}</main>` + tabbar();
   $("#snd").onclick = () => { setSound(!soundOn()); route(); };
+  // Tapping the tab you are already on starts that screen again (the hash doesn't change, so call it directly).
+  app.querySelectorAll(".tabs a").forEach(a => a.onclick = e => { if (a.getAttribute("href") === (location.hash || "#/")) { e.preventDefault(); route(); } });
   window.scrollTo(0, 0);
 }
+const reducedMotion = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
+const bring = el => el && el.scrollIntoView({ block: "nearest", behavior: reducedMotion() ? "auto" : "smooth" });
 
 /* ---------------- sign in (demo) ---------------- */
 function signIn() {
@@ -72,7 +83,14 @@ function islandHealth(world) {
 function home() {
   const open = S.teacher().open, done = missionProgress();
   const nextPhase = MISSION.phases.find(ph => !S.history().some(h => h.text_id === `fizz-${ph.kind}`));
-  page(`
+  const intro = S.profile().seenIntro ? "" : `<section class="card intro">
+      <h3>Welcome, Agent ${esc(S.profile().nick)}!</h3>
+      <ol><li><b>Do the mission</b> on an open island. Check sources and decide what to trust.</li>
+        <li><b>Train in the Gym</b>. Questions get harder as you improve.</li>
+        <li><b>Need help with English?</b> Tap <span class="gl">purple words</span> or 🔊. Help never costs XP.</li></ol>
+      <p class="small">Tip: add this app to your home screen. iPhone: Share → Add to Home Screen. Android: menu ⋮ → Add to Home screen.</p>
+      <button class="btn" id="introOk">Got it</button></section>`;
+  page(`${intro}
     <section class="hero card">
       <p class="kicker">Today's mission · Harvest Key</p>
       <h2>${MISSION.title}</h2>
@@ -93,7 +111,8 @@ function home() {
         <span class="ic">${w.icon}</span><b>${w.island}</b><small>${w.challenge} · ${w.title}</small>
         ${isOpen ? `<div class="bar health" title="Island health"><i style="width:${h}%"></i></div><small>Island health ${h}%${stamp ? " · 🛂" : ""}</small>`
                  : `<small class="lock">🔒 Opens with ${w.challenge} (${w.weeks})</small>`}
-      </${isOpen && w.missions ? "a" : "div"}>`; }).join("")}</div>`, { back: false });
+      </${isOpen && w.missions ? "a" : "div"}>`; }).join("")}</div>`);
+  const ok = $("#introOk"); if (ok) ok.onclick = () => { S.updateProfile({ seenIntro: true }); home(); };
 }
 
 /* ---------------- a question, at the student's support level ---------------- */
@@ -138,6 +157,7 @@ function runItems(ids, { title, onDone, pick } = {}) {
       box.querySelectorAll(".say").forEach(b => b.onclick = () => { help++; say(b.dataset.say === "src" ? SOURCES[it.source][wrap.text].replace(/\*\*/g, "") : it.stem[wrap.stem]); });
       box.querySelectorAll(".opt").forEach(b => b.onclick = () => choose(+b.dataset.k, b));
     }
+    const settle = () => requestAnimationFrame(() => bring(box.querySelector(".fb").lastElementChild));
     function choose(k, btn) {
       const o = it.options[k], fb = box.querySelector(".fb");
       if (k === 0) {
@@ -153,12 +173,12 @@ function runItems(ids, { title, onDone, pick } = {}) {
       if (tries === 1 && wrap.simpler && !simplified) {
         simplified = true; wrap = wrapping(1);
         fb.innerHTML = `<p class="info">Let's try the same question in simpler English.</p><button class="btn" id="cont">Say it simpler</button>`;
-        box.querySelector("#cont").onclick = draw; return;
+        box.querySelector("#cont").onclick = () => { draw(); box.scrollIntoView({ block: "start" }); }; settle(); return;
       }
       if ((tries === 1) || (simplified && tries === 2)) {
         play("info");
         fb.innerHTML = `<p class="info">💡 Hint: ${esc(it.hint)}</p>${o.trap && TRAPS[o.trap] ? `<p class="small">Watch out: <b>${TRAPS[o.trap].name}</b>. ${TRAPS[o.trap].tip}</p>` : ""}`;
-        return;
+        settle(); return;
       }
       box.querySelectorAll(".opt").forEach(b => { b.disabled = true; if (+b.dataset.k === 0) b.classList.add("right"); });
       finish({ support: "explained" }, `<p class="info">The answer is shown in green.</p><p>${esc(it.explain)}</p><p class="skilltag">${skillLine(it)}</p>`);
@@ -169,7 +189,8 @@ function runItems(ids, { title, onDone, pick } = {}) {
       answers.push(a); i++;
       const fb = box.querySelector(".fb");
       fb.innerHTML = html + `<button class="btn" id="next">${(pick ? answers.length >= ids : i >= ids.length) ? "Finish" : "Next"}</button>`;
-      box.querySelector("#next").onclick = show; box.querySelector("#next").focus();
+      box.querySelector("#next").onclick = () => { show(); box.scrollIntoView({ block: "start" }); };
+      box.querySelector("#next").focus({ preventScroll: true }); settle();
     }
     draw();
   }
@@ -316,6 +337,7 @@ function game() {
   let i = 0, pts = 0, combo = 0, timer = null;
   const draw = () => {
     clearTimeout(timer);
+    if (!arena.isConnected) return;                 // the student left the game: stop quietly
     if (i >= cards.length) return end();
     const c = cards[i]; $("#gleft").textContent = `${i + 1}/${cards.length}`;
     $("#gcard").innerHTML = `<p class="gt">${esc(c.t)}</p><div class="tb"><button class="btn trust" data-v="1">👍 Trust</button><button class="btn bust" data-v="0">🚫 Bust</button></div><p class="gwhy"></p>`;
@@ -324,6 +346,7 @@ function game() {
   };
   const answer = (v, e) => {
     clearTimeout(timer);
+    if (!arena.isConnected) return;
     const c = cards[i], ok = v === c.ok, r = arena.getBoundingClientRect();
     const x = e ? e.clientX - r.left : r.width / 2, y = e ? e.clientY - r.top : r.height / 2;
     if (ok) { combo++; const g = 100 + 20 * (combo - 1); pts += g; FX.flash(arena); FX.burst(arena, x, y); FX.floatText(arena, x, y, `+${g}`); }
@@ -341,7 +364,7 @@ function game() {
     $("#again").onclick = game;
     if (xp) Cel.set(xp); else play("done");
   };
-  FX.countdown(arena, draw);
+  FX.countdown(arena, () => arena.isConnected && draw());
 }
 
 /* ---------------- leaderboards ---------------- */
@@ -380,14 +403,19 @@ function me() {
     <h3 class="sec">English help</h3>
     <section class="card"><div class="levels">${SUPPORT.map((s, i) => `<label class="lv"><input type="radio" name="sup" value="${i}" ${i === prof.support ? "checked" : ""}><b>${s.name}</b><span>${s.desc}</span></label>`).join("")}</div>
     <p class="small">The app also adjusts this for you. More help never costs XP.</p></section>
+    <h3 class="sec">Text size</h3>
+    <section class="card"><div class="seg">${[["Normal", false], ["Large", true]].map(([n, v]) => `<button class="segb${!!prof.bigText === v ? " on" : ""}" data-big="${v}">${n}</button>`).join("")}</div></section>
     <button class="btn ghost" id="out">Sign out and reset demo</button>`);
+  app.querySelectorAll("[data-big]").forEach(b => b.onclick = () => { S.updateProfile({ bigText: b.dataset.big === "true" }); applyText(); me(); });
   app.querySelectorAll("input[name=sup]").forEach(x => x.onchange = () => { S.updateProfile({ support: +x.value, tasks: [] }); play("tap"); });
   $("#out").onclick = () => { if (confirm("Reset the demo? Your demo progress in this browser will be deleted.")) { S.signOut(); location.hash = ""; route(); } };
 }
 
 /* ---------------- routing ---------------- */
 const ROUTES = { "": home, "/": home, "/mission": missionScreen, "/gym": gym, "/game": game, "/board": board, "/me": me };
+const applyText = () => document.documentElement.classList.toggle("big-text", !!(S.profile() && S.profile().bigText));
 function route() {
+  applyText();
   if (!S.profile()) return signIn();
   soundUser(S.profile().nick);
   (ROUTES[location.hash.replace(/^#/, "")] || home)();
