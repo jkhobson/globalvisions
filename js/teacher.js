@@ -6,6 +6,7 @@ import { mastery, rank, trapCounts } from "./engine.js";
 import * as S from "./store.js";
 import { demoClass } from "./demo-class.js";
 import { weekKey } from "./kit/rewards.js";
+import { DEMO } from "./config.js";
 
 const esc = t => String(t).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const app = document.getElementById("app");
@@ -47,4 +48,27 @@ function render() {
   });
   app.querySelectorAll("[data-b]").forEach(c => c.onchange = () => { const s = S.teacher(); s.boards[c.dataset.b] = c.checked; S.setTeacher(s); });
 }
+// Real mode: sign in, then manage classes and codes. Progress on the server comes in the next step,
+// so the heat map below still shows the demo class until then.
+async function realClasses() {
+  const A = await import("./auth.js");
+  const box = document.createElement("section"); box.className = "card"; app.querySelector("main").prepend(box);
+  const acc = await A.account().catch(() => null);
+  if (!acc) { box.innerHTML = `<h3>Sign in</h3><button class="btn" id="tg">Sign in with your school Google account</button>`; box.querySelector("#tg").onclick = () => A.signInWithGoogle(); return; }
+  if (!(await A.isTeacher())) { box.innerHTML = `<h3>Teachers only</h3><p>${esc(acc.email)} isn't set up as a teacher. See docs/setup-school-login.md, step 6.</p>`; return; }
+  const show = async () => {
+    const list = await A.teacherClasses();
+    box.innerHTML = `<h3>My classes</h3>
+      ${list.map(c => `<p><b>${esc(c.name)}</b> · code <b class="chip">${esc(c.code)}</b> · ${c.students.length} joined<br>
+        <small>${c.students.map(s => `${esc(s.avatar)} ${esc(s.nick)}`).join(" · ") || "Nobody yet"}</small></p>`).join("") || "<p>No classes yet.</p>"}
+      <label>New class name <input id="cn" maxlength="30" placeholder="e.g. 7A"></label>
+      <button class="btn" id="mk">Make class and code</button> <span id="cm" class="small"></span>`;
+    box.querySelector("#mk").onclick = async () => {
+      const n = box.querySelector("#cn").value.trim(); if (!n) return;
+      const r = await A.createClass(n); if (r.error) box.querySelector("#cm").textContent = r.error; else show();
+    };
+  };
+  show();
+}
 render();
+if (!DEMO) realClasses();
