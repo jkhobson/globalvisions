@@ -55,6 +55,7 @@ a { color: var(--brand); }
 .btn:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--brand-dark); }
 .btn.ghost { background: transparent; color: var(--brand); border: 2px solid var(--brand); box-shadow: 0 4px 0 var(--line); }
 .btn.big { width: 100%; font-size: 1.15rem; padding: 14px; }
+.btn:disabled { background: var(--line); color: var(--muted); box-shadow: none; cursor: default; transform: none; }
 .btn:focus-visible, .opt:focus-visible, .gl:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
 .link { background: none; border: 0; color: var(--brand); text-decoration: underline; cursor: pointer; padding: 4px 0; font: inherit; }
 .bar { height: 10px; background: var(--line); border-radius: 999px; overflow: hidden; margin: 8px 0; }
@@ -182,3 +183,38 @@ a.island { border-color: var(--good); }
 .seg.three { grid-template-columns: 1fr 1fr 1fr; }
 .segb { font: 700 1rem var(--f-head); padding: 12px; border-radius: 12px; border: 2px solid var(--line); border-bottom-width: 4px; background: var(--card); color: var(--ink); cursor: pointer; min-height: 48px; }
 .segb.on { border-color: var(--brand); background: var(--info-bg); }
+
+/* ---------------- answer doors ---------------- */
+.stage { position: relative; height: 190px; margin: 12px 0 8px; border-radius: 14px; overflow: hidden; touch-action: none; user-select: none;
+  background: linear-gradient(to bottom, var(--sea) 0 38%, color-mix(in srgb, var(--good) 22%, var(--card)) 38% 100%); border: 2px solid var(--line); }
+.stage::after { content: ""; position: absolute; left: 4%; right: 4%; top: 36%; height: 6px; border-radius: 3px; background: color-mix(in srgb, var(--ink) 18%, transparent); }
+.door { position: absolute; top: 8px; transform: translateX(-50%); width: 19%; max-width: 68px; height: 66px; padding: 0; border: 0; background: none; cursor: pointer; perspective: 300px; z-index: 1; }
+.door .frame { display: block; height: 100%; border-radius: 30px 30px 4px 4px; background: color-mix(in srgb, var(--ink) 55%, var(--card)); padding: 4px 4px 0; }
+.door .panel { display: flex; align-items: center; justify-content: center; height: 100%; border-radius: 26px 26px 2px 2px; background: var(--brand); color: var(--brand-ink);
+  transform-origin: left center; transition: transform .45s ease, background .2s; position: relative; }
+.door .panel::after { content: ""; position: absolute; right: 18%; top: 55%; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
+.door b { font-size: 1.3rem; }
+.door:nth-of-type(2) .panel { background: var(--info); } .door:nth-of-type(3) .panel { background: var(--accent-dark); } .door:nth-of-type(4) .panel { background: #2a9d8f; }
+.door.near .frame { box-shadow: 0 0 0 3px var(--accent), 0 0 18px var(--accent); }
+.door.open .frame { background: color-mix(in srgb, var(--good) 60%, #fff); }
+.door.open .panel { transform: rotateY(-75deg); }
+.door.shut .panel { background: var(--bad) !important; opacity: .55; animation: shake .35s; }
+.door.shut .panel b { text-decoration: line-through; }
+.door:disabled { cursor: default; }
+.agent { position: absolute; transform: translate(-50%, -50%); font-size: 2.2rem; line-height: 1; transition: left .4s ease, top .4s ease; z-index: 2; cursor: grab;
+  filter: drop-shadow(0 4px 2px rgb(0 0 0 / .25)); }
+.agent .bob { display: inline-block; }
+.agent.walking .bob { animation: walk .2s infinite alternate; }
+.agent.flip .bob { transform: scaleX(-1); }
+.agent.through { transition: top .5s ease, opacity .5s; top: 14% !important; opacity: 0; }
+.walkbar { display: flex; gap: 10px; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.pad { display: grid; grid-template-columns: repeat(4, 44px); gap: 6px; }
+.padb { width: 44px; height: 44px; border-radius: 12px; border: 2px solid var(--line); background: var(--card); color: var(--ink); font-size: 1rem; cursor: pointer; }
+.padb:active { background: var(--press); }
+.walkbar .enter { flex: 1; min-width: 0; margin: 0; }
+.opts.lettered .opt { display: flex; gap: 10px; align-items: flex-start; text-align: left; }
+.opt .letter { flex: none; display: inline-grid; place-items: center; width: 1.7em; height: 1.7em; border-radius: 50%; background: var(--line); }
+.opt.near { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
+@keyframes walk { from { transform: translateY(0) rotate(-6deg); } to { transform: translateY(-5px) rotate(6deg); } }
+@keyframes shake { 25% { transform: translateX(-4px); } 75% { transform: translateX(4px); } }
+@media (prefers-reduced-motion: reduce) { .agent, .door .panel { transition: none; } .agent.walking .bob, .door.shut .panel { animation: none; } }
