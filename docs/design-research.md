@@ -9,7 +9,7 @@ Notes behind the light theme, gathered November 2026. Please check the sources y
 - **Warm, direct and not patronising.** UK Department for Education research with young people found they like colour, images and interactive tools. They dislike clutter, childish gimmicks, long explanations, and being shown too many choices at once. Source: [Designing for young people, DfE design histories](https://design-histories.education.gov.uk/find-a/designing-for-young-people).
 - **Playful but simple shapes.** Duolingo describes its look as bold, bright and rounded: vibrant colours on white, simple shapes and exaggerated characters. The aim is to make mistakes feel less scary. Source: [Shape language: Duolingo's art style](https://blog.duolingo.com/shape-language-duolingos-art-style/).
 - **Collect and play.** Classroom games popular with middle schoolers, such as Blooket, lean on collectable characters and many small game modes. Kahoot keeps a plain, fast race with a live leaderboard. Source: [Blooket vs Kahoot for middle school (Screenwise)](https://screenwiseapp.com/guides/blooket-vs-kahoot-for-middle-school-learning). This is a review site, not research.
-- **Light versus dark.** I did not find solid research showing that teens prefer one or the other. Most popular learning apps default to light, and many offer dark as an option. That is why the app now has a switch.
+- **Light versus dark.** I did not find solid research showing that teens prefer one or the other. Duolingo, for example, is built on white backgrounds. I have not checked every app, so treat "most learning apps are light" as a guess. That is why the app now has a switch.
 
 ## What this means for Global Visions
 
