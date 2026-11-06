@@ -14,12 +14,12 @@ export const P_START = 0.3, P_MASTERED = 0.85;
 export function mastery(history, blocks = BLOCKS) {
   const p = Object.fromEntries(Object.keys(blocks).map(b => [b, P_START]));
   const answers = [...history].sort((a, b) => String(a.created_at).localeCompare(String(b.created_at))).flatMap(h => h.answers || []);
-  // A question the student already got right before may just be remembered, so a repeat right answer
-  // counts like a right-after-hint answer (a small step), not a full one.
-  const rightBefore = new Set();
+  // A student who has met a question before has already seen its answer (right away, or in the review at the end),
+  // so a repeat right answer counts like a right-after-hint answer (a small step), not a full one.
+  const seenBefore = new Set();
   for (const a of answers) {
-    applyAnswer(p, a.support === "none" && rightBefore.has(a.item) ? { ...a, support: "hint" } : a, blocks);
-    if (a.support === "none" && a.item) rightBefore.add(a.item);
+    applyAnswer(p, a.support === "none" && seenBefore.has(a.item) ? { ...a, support: "hint" } : a, blocks);
+    if (a.item) seenBefore.add(a.item);
   }
   return p;
 }
@@ -116,6 +116,16 @@ export function placeOptions(options, slot, rand = Math.random) {
   wrong.splice(slot % options.length, 0, options[0]);
   return wrong;
 }
+
+// XP for one finished set. A question met before (its answer has been shown) earns no XP the second time,
+// so getting answers wrong on purpose to learn them, then replaying, gains nothing. The server uses the same rule.
+export function setXP(answers, history) {
+  const before = new Set(history.flatMap(h => h.answers || []).map(a => a.item));
+  return answers.reduce((s, a) => s + (a.reflection || a.game || !before.has(a.item) ? answerXP(a) : 0), 0);
+}
+// A first tap that is wrong and faster than this probably wasn't read properly.
+export const QUICK_MS = 4000;
+export const quickGuesses = answers => answers.filter(a => a.picks && a.picks[0] !== 0 && a.ms > 0 && a.ms < QUICK_MS).length;
 
 /* ---------------- fresh questions ---------------- */
 // How many times each question (item id) appears in the student's history.

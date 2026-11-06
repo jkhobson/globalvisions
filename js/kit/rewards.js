@@ -12,8 +12,12 @@ export function answerXP(a) { return a.support === "none" || a.first_try ? XP.fi
 
 // Replays: the second play of the same activity on the same day earns half, the third and later earn nothing.
 // (This closes the grinding loophole found in Checkpoint Quest, where sets paid full XP on every replay.)
+// Think Gym sets each have their own id, so they share one rule: 3 full sets a day, then 2 at half, then nothing.
+// (The server uses the same rules: supabase/progress.sql.)
 export function replayFactor(history, id, now = new Date()) {
-  const today = dayNo(now), n = history.filter(h => h.text_id === id && dayNo(new Date(h.created_at)) === today).length;
+  const today = dayNo(now), gym = /^gym-/.test(id || "");
+  const n = history.filter(h => (gym ? /^gym-/.test(h.text_id || "") : h.text_id === id) && dayNo(new Date(h.created_at)) === today).length;
+  if (gym) return n < 3 ? 1 : n < 5 ? 0.5 : 0;
   return n === 0 ? 1 : n === 1 ? 0.5 : 0;
 }
 export function activityXP(answers, { history = [], id, levelUps = 0, now = new Date() } = {}) {

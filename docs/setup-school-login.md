@@ -21,8 +21,11 @@ These menus were correct as far as I know in November 2026. Supabase and Google 
    5. Pick the region closest to the school (Singapore, if it is offered).
 2. **Create the tables and rules.**
    1. In the project, open **SQL Editor** and click **New query**.
-   2. Paste in the whole of `supabase/schema.sql` from the repo.
-   3. Click **Run**.
+   2. Paste in the whole of `supabase/schema.sql` from the repo and click **Run**.
+   3. Click **New query** again, paste in the whole of `supabase/progress.sql` and click **Run**. This adds saved work, server-side XP and leaderboards.
+   4. Click **New query** again, paste in the whole of `supabase/content.sql` and click **Run**. This tells the server which options are right, so it can mark answers and work out XP.
+
+   All three files are safe to run again. Whenever Claude changes the questions, run `supabase/content.sql` again (Claude will remind you in the PR).
 3. **Turn on Google sign-in in Supabase.**
    1. Go to **Authentication → Sign In / Providers → Google** and switch it on.
    2. Copy the **Callback URL** shown there. You need it in step 4.
@@ -59,6 +62,14 @@ These menus were correct as far as I know in November 2026. Supabase and Google 
    2. Give students the code.
    3. Each student signs in with Google, types the code and picks a nickname. Nicknames must be unique within a class.
 
-## What this step does not do yet
+## What happens to students' work
 
-Practice progress is still saved only on each device. The next step saves every answer to the database and works out XP on the server, so students can't fake it. After that, the teacher page heat map will show your real class instead of the demo one.
+- Every finished activity is saved to the database. If a student is offline, the app keeps it and sends it when the connection comes back.
+- The server marks every answer and works out the XP itself. A student who edits the app on their device can't give themselves more XP.
+- A question a student has seen before earns no XP. Replays and extra practice earn less each time on the same day.
+- The teacher page shows your real class: both dials, the heat map, top traps, quick guesses and when each student was last active.
+- The leaderboards show your class only, with nicknames.
+
+## Known limit
+
+The app still has to load the questions to show them, and that includes which option is right. A student who knows how to read web page code could find it. They would still earn no XP for questions they have seen before, and the server checks every answer. Moving the questions fully onto the server is possible later, but it would make the app slower and stop it working offline.
