@@ -48,7 +48,8 @@ export const TRAPS = {
   "all-or-nothing": { name: "All or nothing", tip: "Most sources are partly useful. Say what is strong and what is weak." },
   "claim-no-evidence": { name: "Claim with no evidence", tip: "A strong argument needs a reason and evidence." },
   "correlation-cause": { name: "Link means cause", tip: "Two things together does not prove one caused the other." },
-  "vague-question": { name: "Vague question", tip: "A good research question is focused and can't be answered with yes or no." }
+  "vague-question": { name: "Vague question", tip: "A good research question is focused: not too broad and not too narrow." },
+  "yes-no-question": { name: "Yes/no question", tip: "A research question should start with How, Why, What or To what extent, so it can't be answered with just yes or no." }
 };
 
 // The four English support levels (the second dial). The task stays the same; only the wrapping changes.

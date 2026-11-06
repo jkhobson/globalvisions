@@ -62,12 +62,12 @@ export const ITEMS = [
     stem: { simple: "The island wants to know about sugary drinks at school. Which question is best to research?",
             std: "Harvest Key's council asks your team to investigate sugary drinks in school shops. Which research question is the most focused and useful?" },
     options: [
-      { t: "Should Harvest Key stop school shops selling sugary drinks, and what would change for students?" },
-      { t: "Are sugary drinks bad for people all around the world, or not?", trap: "vague-question" },
-      { t: "Do the students at Harvest Key Middle School like the taste of ZapFizz?", trap: "vague-question" },
+      { t: "How would stopping sugary drink sales in Harvest Key school shops affect students?" },
+      { t: "Are sugary drinks bad for people all around the world, or not?", trap: "yes-no-question" },
+      { t: "Do the students at Harvest Key Middle School like the taste of ZapFizz?", trap: "yes-no-question" },
       { t: "How many cans of drink did the school shop on Harvest Key sell yesterday afternoon?", trap: "vague-question" }],
-    hint: "A good question is about the real issue and can't be answered with just yes or no.",
-    explain: "The best question names the place, the issue and who is affected, and it needs research to answer." },
+    hint: "Which question starts with How or Why, and needs research to answer, not just yes or no?",
+    explain: "The best question starts with How, names the place, the issue and who is affected, and needs research to answer. Questions that start with Are or Do can be answered with just yes or no." },
 
   // E1: who made it and why
   { id: "e1-zap-01", block: "E1", demand: 0, source: "src-zap",

@@ -45,3 +45,10 @@ test("Trust or Bust cards have reasons and known traps", () => {
   TRUST_CARDS.forEach(c => { assert.ok(c.why); if (c.trap) assert.ok(TRAPS[c.trap], c.trap); });
   assert.ok(TRUST_CARDS.some(c => c.ok) && TRUST_CARDS.some(c => !c.ok));
 });
+
+test("Research questions offered as the right answer are open, not yes/no", () => {
+  ITEMS.filter(it => it.block.startsWith("R")).forEach(it => {
+    const right = it.options[0].t.trim();
+    if (right.endsWith("?")) assert.ok(!/^(is|are|do|does|did|should|can|could|will|would|has|have|was|were)\b/i.test(right), `${it.id}: right answer is a yes/no question`);
+  });
+});
