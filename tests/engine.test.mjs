@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { mastery, applyAnswer, nextBlock, rank, nextDemand, nextSupport, answerXP, wrapping, P_START, trapCounts, dealSlots, placeOptions } from "../js/engine.js";
+import { mastery, applyAnswer, nextBlock, rank, nextDemand, nextSupport, answerXP, wrapping, P_START, trapCounts, dealSlots, placeOptions, seenCounts, freshest, setXP, quickGuesses } from "../js/engine.js";
 
 const at = (answers, t = "2026-11-06T01:00:00Z") => ({ text_id: "x", created_at: t, answers });
 const right = (block, demand = 0) => ({ block, demand, support: "none" });
@@ -79,4 +79,33 @@ test("Right answers are spread evenly across positions, never 3 in a row", () =>
   }
   const opts = [{ t: "right" }, { t: "a" }, { t: "b" }, { t: "c" }];
   for (let k = 0; k < 4; k++) { const p = placeOptions(opts.map(o => ({ ...o })), k, rand); assert.equal(p[k].t, "right"); assert.equal(p.length, 4); }
+});
+
+test("a remembered right answer counts less than a first right answer", () => {
+  const once = mastery([at([{ item: "q1", block: "E1", support: "none" }])]).E1;
+  const twiceSame = mastery([at([{ item: "q1", block: "E1", support: "none" }, { item: "q1", block: "E1", support: "none" }])]).E1;
+  const twoDifferent = mastery([at([{ item: "q1", block: "E1", support: "none" }, { item: "q2", block: "E1", support: "none" }])]).E1;
+  assert.ok(twiceSame > once && twiceSame < twoDifferent, `${once} ${twiceSame} ${twoDifferent}`);
+});
+
+test("replays pick the version seen least", () => {
+  const counts = seenCounts([at([{ item: "a" }, { item: "a" }, { item: "b" }])]);
+  assert.deepEqual(counts, { a: 2, b: 1 });
+  assert.equal(freshest(["a", "b", "c"], counts), "c");
+  assert.equal(freshest(["a", "b"], counts), "b");
+  const picks = new Set(Array.from({ length: 50 }, () => freshest(["x", "y"], {})));
+  assert.equal(picks.size, 2);
+});
+
+test("questions met before earn no XP, and a question missed then answered later counts less", () => {
+  const hist = [at([{ item: "q1", block: "E1", demand: 0, support: "explained" }])];
+  assert.equal(setXP([{ item: "q1", demand: 0, support: "none" }], hist), 0);
+  assert.equal(setXP([{ item: "q2", demand: 0, support: "none" }], hist), 10);
+  const missedThenRight = mastery([...hist, at([{ item: "q1", block: "E1", support: "none" }], "2026-11-07T01:00:00Z")]).E1;
+  const missedThenNew = mastery([...hist, at([{ item: "q2", block: "E1", support: "none" }], "2026-11-07T01:00:00Z")]).E1;
+  assert.ok(missedThenRight < missedThenNew);
+});
+
+test("quick wrong first taps are counted", () => {
+  assert.equal(quickGuesses([{ picks: [2, 0], ms: 1500 }, { picks: [0], ms: 900 }, { picks: [1], ms: 9000 }, { picks: [3, 0], ms: 2000 }]), 2);
 });

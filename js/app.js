@@ -2,7 +2,7 @@
 import { BLOCKS, OBJECTIVES, SKILLS, SKILL_ICON, SUPPORT, TRAPS } from "./content/curriculum.js";
 import { WORLDS } from "./content/worlds.js";
 import { GLOSSARY, ITEMS, MISSION, SOURCES, TRUST_CARDS } from "./content/fizz.js";
-import { applyAnswer, mastery, nextBlock, nextDemand, nextSupport, rank, ranks, trapCounts, wrapping, mastered, dealSlots, placeOptions } from "./engine.js";
+import { applyAnswer, mastery, nextBlock, nextDemand, nextSupport, rank, ranks, trapCounts, wrapping, mastered, dealSlots, placeOptions, seenCounts, freshest, quickGuesses, QUICK_MS } from "./engine.js";
 import * as S from "./store.js";
 import { DEMO } from "./config.js";
 import { demoClass } from "./demo-class.js";
@@ -73,6 +73,9 @@ function signIn() {
 }
 
 /* ---------------- sign in (school accounts) ---------------- */
+let REMOTE = null;            // the server module once a student is signed in (real mode only)
+window.addEventListener("online", () => S.flush());
+window.addEventListener("gv-sync", () => { const c = document.querySelector(".chip.xp"); if (c) c.textContent = `⭐ ${totalXP()}`; });
 // Used only when js/config.js has Supabase settings. Step 1: school Google account. Step 2: class code and nickname.
 async function schoolSignIn() {
   const A = await import("./auth.js");
@@ -96,7 +99,14 @@ async function schoolSignIn() {
   }
   const m = await A.membership().catch(() => null);
   // Shared iPads: if this browser holds another student's practice, clear it before this student starts.
-  if (m) { const p = S.profile(); if (!p || p.nick !== m.nick) { S.signOut(); S.signIn(m.nick, m.avatar); } return route(); }
+  if (m) {
+    const p = S.profile(); if (!p || p.nick !== m.nick) { S.signOut(); S.signIn(m.nick, m.avatar); }
+    S.setRemote({ save: A.saveAttempt, load: A.myAttempts });
+    try { await S.loadRemote(); } catch (e) { /* offline: keep this device's copy */ }
+    const set = await A.myClassSettings().catch(() => null); if (set) S.setTeacher(set);
+    S.flush(); REMOTE = A;
+    return route();
+  }
   const avatars = ["🦊", "🐼", "🐢", "🦉", "🐬", "🦋", "🐯", "🦜", "🐙", "🦔", "🐳", "🦎"];
   shell(`<p class="lead">Welcome, agent. Join your class.</p>
     <label>Class code from your teacher <input id="code" maxlength="8" autocomplete="off" autocapitalize="characters" placeholder="e.g. HK7A24"></label>
@@ -181,26 +191,30 @@ function sourceCard(id, wrap) {
 }
 
 // Runs a list of items one after another. onAnswer(answer) after each; done(answers, help) at the end.
-// One even spread of right-answer positions across the whole mission (all phases together), dealt once per visit.
-let MISSION_SLOTS = null;
-function missionSlots() {
-  if (!MISSION_SLOTS) {
-    const ids = MISSION.phases.flatMap(p => p.items || []), deal = dealSlots(ids.length);
-    MISSION_SLOTS = Object.fromEntries(ids.map((id, i) => [id, deal[i]]));
-  }
-  return MISSION_SLOTS;
+// One mission run: for each question slot, the version this student has seen least, plus one even spread of
+// right-answer positions across all phases together. Made when the Briefing starts (or a replay starts).
+let MISSION_PLAN = null;
+function newMissionPlan() {
+  const counts = seenCounts(S.history());
+  const picks = Object.fromEntries(MISSION.phases.map(p => [p.kind, (p.items || []).map(v => Array.isArray(v) ? freshest(v, counts) : v)]));
+  const ids = Object.values(picks).flat(), deal = dealSlots(ids.length);
+  MISSION_PLAN = { picks, slots: Object.fromEntries(ids.map((id, i) => [id, deal[i]])) };
+  return MISSION_PLAN;
 }
+const missionPlan = () => MISSION_PLAN || newMissionPlan();
 function runItems(ids, { title, onDone, pick, slots: given } = {}) {
   const answers = []; let i = 0, help = 0;
   const box = document.createElement("div"); box.className = "runner";
   const nextId = () => pick ? pick(answers) : ids[i];
   const slots = given || dealSlots(pick ? ids : ids.length);   // where the right answer sits in each question: evenly spread
   function show() {
-    if (pick ? answers.length >= ids : i >= ids.length) return onDone(answers, help);
+    if (pick ? answers.length >= ids : i >= ids.length) return review();
     const id = nextId();
-    if (!id) return onDone(answers, help);
+    if (!id) return review();
     const it = ITEM[id], level = support(), helpAtStart = help;
     let wrap = wrapping(level), tries = 0, simplified = false, traps = [], gap = null;
+    const picks = [];                       // every option tapped, by its position in the data (0 = right); the server re-checks these
+    const shownAt = Date.now(); let ms = 0;  // time to the first tap, to spot quick guesses
     const total = pick ? ids : ids.length;
     const opts = placeOptions(it.options.map((o, k) => ({ ...o, k })), slots[answers.length] ?? 0);   // same order on every redraw
     function draw() {
@@ -219,6 +233,7 @@ function runItems(ids, { title, onDone, pick, slots: given } = {}) {
     const settle = () => requestAnimationFrame(() => bring(box.querySelector(".fb").lastElementChild));
     function choose(k, btn) {
       const o = it.options[k], fb = box.querySelector(".fb");
+      picks.push(k); if (picks.length === 1) ms = Date.now() - shownAt;
       if (k === 0) {
         play("ok"); btn.classList.add("right");
         const barrier = simplified && tries === 1 ? "language" : undefined;
@@ -231,27 +246,50 @@ function runItems(ids, { title, onDone, pick, slots: given } = {}) {
       if (o.trap) traps.push(o.trap); if (o.b) gap = o.b;
       if (tries === 1 && wrap.simpler && !simplified) {
         simplified = true; wrap = wrapping(1);
-        fb.innerHTML = `<p class="info">Let's try the same question in simpler English.</p><button class="btn" id="cont">Say it simpler</button>`;
+        fb.innerHTML = `<p class="bad">✘ ${esc(o.why || "That choice doesn't fit.")}</p><p class="info">Let's try the same question in simpler English.</p><button class="btn" id="cont">Say it simpler</button>`;
         box.querySelector("#cont").onclick = () => { draw(); box.scrollIntoView({ block: "start" }); }; settle(); return;
       }
-      if ((tries === 1) || (simplified && tries === 2)) {
+      // A wrong tap always says why that choice doesn't work. The right answer is never shown,
+      // so tapping wrong answers on purpose teaches nothing about which one is right.
+      const why = `<p class="bad">✘ ${esc(o.why || "That choice doesn't fit.")}</p>`;
+      if (tries === 1) {
         play("info");
-        fb.innerHTML = `<p class="info">💡 Hint: ${esc(it.hint)}</p>${o.trap && TRAPS[o.trap] ? `<p class="small">Watch out: <b>${TRAPS[o.trap].name}</b>. ${TRAPS[o.trap].tip}</p>` : ""}`;
+        fb.innerHTML = `${why}<p class="info">💡 Hint: ${esc(it.hint)}</p>${o.trap && TRAPS[o.trap] ? `<p class="small">Watch out: <b>${TRAPS[o.trap].name}</b>. ${TRAPS[o.trap].tip}</p>` : ""}`;
         settle(); return;
       }
-      box.querySelectorAll(".opt").forEach(b => { b.disabled = true; if (+b.dataset.k === 0) b.classList.add("right"); });
-      finish({ support: "explained" }, `<p class="info">The answer is shown in green.</p><p>${esc(it.explain)}</p><p class="skilltag">${skillLine(it)}</p>`);
+      // Out of tries (2 wrong taps): no reveal. The question counts as missed and won't earn XP again.
+      box.querySelectorAll(".opt").forEach(b => b.disabled = true);
+      finish({ support: "explained" }, `${why}<p class="info">Not this time. We won't show the answer: you'll meet this skill again in a new question.</p>${o.trap && TRAPS[o.trap] ? `<p class="small">Trap to watch: <b>${TRAPS[o.trap].name}</b>. ${TRAPS[o.trap].tip}</p>` : ""}`);
     }
     function finish(res, html) {
       box.querySelectorAll(".opt").forEach(b => b.disabled = true);
-      const a = { item: it.id, block: it.block, demand: it.demand, first_try: res.support === "none" && !res.barrier, ...res, traps, gap: res.support === "explained" ? gap : null, help: help - helpAtStart };
+      const a = { item: it.id, block: it.block, demand: it.demand, first_try: res.support === "none" && !res.barrier, ...res, traps, gap: res.support === "explained" ? gap : null, help: help - helpAtStart, picks, simplified, ms };
       answers.push(a); i++;
+      // Two quick wrong first taps in one set: a gentle nudge to read first.
+      const nudge = quickGuesses(answers) === 2 && a.picks[0] !== 0 && ms < QUICK_MS
+        ? `<p class="note">🐢 Slow down, agent. Read the source and the question first. Quick guesses lower your progress and earn less XP.</p>` : "";
+      html = nudge + html;
       const fb = box.querySelector(".fb");
       fb.innerHTML = html + `<button class="btn" id="next">${(pick ? answers.length >= ids : i >= ids.length) ? "Finish" : "Next"}</button>`;
       box.querySelector("#next").onclick = () => { show(); box.scrollIntoView({ block: "start" }); };
       box.querySelector("#next").focus({ preventScroll: true }); settle();
     }
     draw();
+  }
+  // End-of-set review: the questions the student missed, with why each of their choices didn't work.
+  // It never shows the right answer.
+  function review() {
+    const missed = answers.filter(a => a.support === "explained" && ITEM[a.item]);
+    if (!missed.length) return onDone(answers, help);
+    const wrap = wrapping(support());
+    box.innerHTML = `<div class="card"><p class="kicker">Review</p><h3>Questions to learn from</h3>
+      ${missed.map(a => { const it = ITEM[a.item]; return `<div class="sec"><p><b>${richText(it.stem[wrap.stem], "off")}</b></p>
+        ${(a.picks || []).filter(k => k > 0).map(k => `<p class="opt wrong">${esc(it.options[k].t)}</p><p class="bad small">✘ ${esc(it.options[k].why || "")}</p>`).join("")}
+        <p class="info">💡 ${esc(it.hint)}</p></div>`; }).join("")}
+      <p class="small">We don't show the answers. These questions won't earn XP again, and a new version will test the same skill next time.</p>
+      <button class="btn" id="reviewed">Continue</button></div>`;
+    box.querySelector("#reviewed").onclick = () => onDone(answers, help);
+    box.scrollIntoView({ block: "start" });
   }
   show();
   return box;
@@ -272,6 +310,7 @@ function glossaryPop(btn) {
 function afterTask(help) {
   const p = S.profile(), tasks = [...(p.tasks || []), { help }].slice(-5), r = nextSupport(p.support, tasks);
   S.updateProfile({ tasks: r.change ? [] : tasks, support: r.level });
+  if (r.change && REMOTE) REMOTE.setSupport(r.level).catch(() => {});
   return r.change === "less" ? `<p class="note">You need less English help now, so texts will be a little longer. You can change this on your Agent ID.</p>`
        : r.change === "more" ? `<p class="note">Next time you'll get a little more English help. That's fine: the thinking is the same.</p>` : "";
 }
@@ -307,7 +346,8 @@ function missionScreen() {
   intro.querySelector("#begin").onclick = () => {
     play("flip"); stage.innerHTML = "";
     const before = ranks(mastery(S.history()));
-    stage.appendChild(runItems(phase.items, { title: phase.title, slots: phase.items.map(id => missionSlots()[id]), onDone: (answers, help) => {
+    const plan = phase.kind === "briefing" ? newMissionPlan() : missionPlan(), ids = plan.picks[phase.kind];
+    stage.appendChild(runItems(ids, { title: phase.title, slots: ids.map(id => plan.slots[id]), onDone: (answers, help) => {
       const att = S.saveAttempt({ id: `fizz-${phase.kind}`, mode: "mission", answers });
       const note = afterTask(help);
       stage.innerHTML = `<div class="card done"><h2>${phase.title} complete</h2><p>+${att.xp} XP</p>${note}<button class="btn" id="nextPhase">Next phase</button> <a class="btn ghost" href="#/">Map</a></div>`;
@@ -345,10 +385,10 @@ function missionDone() {
 }
 function replayMission() {
   // Replay runs all question phases in one go (replay XP rules apply: half today, then nothing).
-  const items = MISSION.phases.flatMap(p => p.items || []);
+  const plan = newMissionPlan(), items = Object.values(plan.picks).flat();
   page(`<p class="kicker">Replay · ${MISSION.title}</p><div id="stage"></div>`);
   const before = ranks(mastery(S.history()));
-  $("#stage").appendChild(runItems(items, { title: "Replay", onDone: (answers, help) => {
+  $("#stage").appendChild(runItems(items, { title: "Replay", slots: items.map(id => plan.slots[id]), onDone: (answers, help) => {
     const att = S.saveAttempt({ id: "fizz-replay", mode: "mission", answers });
     const note = afterTask(help);
     $("#stage").innerHTML = `<div class="card done"><h2>Replay complete</h2><p>+${att.xp} XP${att.xp === 0 ? " (replays pay half the first time each day, then nothing)" : ""}</p>${note}<a class="btn" href="#/">Map</a></div>`;
@@ -364,14 +404,15 @@ function gym() {
     <p class="small">Focus now: <b>${BLOCKS[blockNow].name}</b></p><button class="btn" id="go">Start</button></div><div id="stage"></div>`);
   $("#go").onclick = () => {
     $("#go").closest(".card").remove();
-    const live = { ...p }, seen = new Set(), before = ranks(p);
+    const live = { ...p }, seen = new Set(), before = ranks(p), counts = seenCounts(S.history());
     let demand = S.profile().gymDemand || 0;
     const pick = answers => {
       if (answers.length) { applyAnswer(live, answers[answers.length - 1]); demand = nextDemand(demand, answers); }
       const b = nextBlock(live, "Evaluation");
       const pool = ITEMS.filter(i => BLOCKS[i.block].skill === "Evaluation" && !seen.has(i.id));
-      const best = pool.filter(i => i.block === b).sort((x, y) => Math.abs(x.demand - demand) - Math.abs(y.demand - demand))[0]
-        || pool.sort((x, y) => Math.abs(x.demand - demand) - Math.abs(y.demand - demand))[0];
+      // Least-seen questions first, then the closest to the right difficulty.
+      const order = (x, y) => ((counts[x.id] || 0) - (counts[y.id] || 0)) || (Math.abs(x.demand - demand) - Math.abs(y.demand - demand)) || (Math.random() - 0.5);
+      const best = pool.filter(i => i.block === b).sort(order)[0] || pool.sort(order)[0];
       if (best) seen.add(best.id); return best && best.id;
     };
     $("#stage").appendChild(runItems(5, { title: "Think Gym", pick, onDone: (answers, help) => {
@@ -386,9 +427,10 @@ function gym() {
 }
 
 /* ---------------- Trust or Bust: game ---------------- */
-// 4 Trust and 4 Bust cards in a mixed order, never 3 of the same answer in a row.
+// 4 Trust and 4 Bust cards in a mixed order, never 3 of the same answer in a row. Cards seen least come first.
 function balancedCards() {
-  const pickN = ok => shuffle(TRUST_CARDS.filter(c => c.ok === ok)).slice(0, 4);
+  const counts = seenCounts(S.history()), seen = c => counts[`trust-${TRUST_CARDS.indexOf(c)}`] || 0;
+  const pickN = ok => shuffle(TRUST_CARDS.filter(c => c.ok === ok)).sort((a, b) => seen(a) - seen(b)).slice(0, 4);
   const yes = pickN(true), no = pickN(false);
   return dealSlots(yes.length + no.length, 2).map(s => (s ? yes : no).pop()).filter(Boolean);
 }
@@ -417,7 +459,7 @@ function game() {
     if (ok) { combo++; const g = 100 + 20 * (combo - 1); pts += g; FX.flash(arena); FX.burst(arena, x, y); FX.floatText(arena, x, y, `+${g}`); }
     else { combo = 0; FX.hurt(arena); FX.floatText(arena, x, y, v === null ? "Time!" : "Oops", "bad"); }
     FX.setPoints(arena, pts); FX.setCombo(arena, combo);
-    answers.push({ item: `trust-${TRUST_CARDS.indexOf(c)}`, game: true, support: ok ? "none" : "explained", traps: !ok && c.trap ? [c.trap] : [] });
+    answers.push({ item: `trust-${TRUST_CARDS.indexOf(c)}`, game: true, v, support: ok ? "none" : "explained", traps: !ok && c.trap ? [c.trap] : [] });
     $("#gcard").querySelectorAll("button").forEach(b => b.disabled = true);
     $("#gcard .gwhy").innerHTML = `${c.ok ? "Trust" : "Bust"}: ${esc(c.why)}`;
     i++; setTimeout(draw, ok ? 1300 : 2400);
@@ -434,15 +476,29 @@ function game() {
 
 /* ---------------- leaderboards ---------------- */
 function board() {
-  const t = S.teacher().boards, me = S.profile(), hist = S.history(), wk = weekKey(new Date());
+  const t = S.teacher().boards;
+  // School mode: the server works out every student's XP and mastery, so nobody can fake their place.
+  if (REMOTE) {
+    page(`<h2>Leaderboards</h2><p>Loading your class…</p>`);
+    REMOTE.classBoard().then(rows => {
+      if (location.hash !== "#/board") return;
+      drawBoard(t, rows.map(r => ({ nick: r.nick, avatar: r.avatar, me: r.me, weekXP: r.week_xp, climbed: r.climbed, mastered: r.mastered })));
+    }).catch(() => page(`<h2>Leaderboards</h2><p class="card">Couldn't load the leaderboards. Check your connection and try again.</p>`));
+    return;
+  }
+  const me = S.profile(), hist = S.history(), wk = weekKey(new Date());
   const myWeek = hist.filter(h => weekKey(h.created_at) === wk).reduce((s, h) => s + h.xp, 0);
   const before = mastery(hist.filter(h => weekKey(h.created_at) !== wk)), now = mastery(hist);
   const myClimb = Object.keys(BLOCKS).filter(b => mastered(now, b) && !mastered(before, b)).length;
-  const cls = demoClass(), rows = [...cls.map(c => ({ ...c })), { nick: me.nick, avatar: me.avatar, weekXP: myWeek, climbed: myClimb, me: true }];
+  const rows = [...demoClass().map(c => ({ ...c, mastered: Object.values(c.p).filter(v => v >= 0.85).length })),
+    { nick: me.nick, avatar: me.avatar, weekXP: myWeek, climbed: myClimb, me: true, mastered: Object.keys(BLOCKS).filter(b => mastered(now, b)).length }];
+  drawBoard(t, rows);
+}
+function drawBoard(t, rows) {
   const list = (arr, val, unit) => `<ol class="lb">${arr.slice(0, 10).map((r, i) => `<li class="${r.me ? "me" : ""}"><span class="pos">${i + 1}</span><span>${esc(r.avatar)} ${esc(r.nick)}</span><b>${r[val]} ${unit}</b></li>`).join("")}</ol>`;
   const week = [...rows].sort((a, b) => b.weekXP - a.weekXP), climb = [...rows].sort((a, b) => b.climbed - a.climbed);
-  const meWeekPos = week.findIndex(r => r.me) + 1;
-  const classHealth = Math.round((cls.reduce((s, c) => s + Object.values(c.p).filter(v => v >= 0.85).length, 0) + Object.keys(BLOCKS).filter(b => mastered(now, b)).length) / (rows.length * Object.keys(BLOCKS).length) * 100);
+  const meWeekPos = week.findIndex(r => r.me) + 1, myWeek = meWeekPos ? week[meWeekPos - 1].weekXP : 0;
+  const classHealth = rows.length ? Math.round(rows.reduce((s, r) => s + r.mastered, 0) / (rows.length * Object.keys(BLOCKS).length) * 100) : 0;
   page(`<h2>Leaderboards</h2><p class="small">Nicknames only. The weekly board resets every Monday, so anyone can win.</p>
     ${t.island ? `<section class="card"><h3>🏝️ Class goal: restore Harvest Key</h3><p>Every block anyone in the class masters helps.</p><div class="bar health"><i style="width:${classHealth}%"></i></div><p class="small">${classHealth}% restored</p></section>` : ""}
     ${t.week ? `<section class="card"><h3>⭐ This week's XP</h3>${list(week, "weekXP", "XP")}${meWeekPos > 10 ? `<p class="small">You: #${meWeekPos} with ${myWeek} XP</p>` : ""}</section>` : ""}
@@ -477,7 +533,7 @@ function me() {
     <button class="btn ghost" id="out">${DEMO ? "Sign out and reset demo" : "Sign out"}</button>`);
   app.querySelectorAll("[data-theme]").forEach(b => b.onclick = () => { S.updateProfile({ theme: b.dataset.theme }); applyText(); me(); });
   app.querySelectorAll("[data-big]").forEach(b => b.onclick = () => { S.updateProfile({ bigText: b.dataset.big === "true" }); applyText(); me(); });
-  app.querySelectorAll("input[name=sup]").forEach(x => x.onchange = () => { S.updateProfile({ support: +x.value, tasks: [] }); play("tap"); });
+  app.querySelectorAll("input[name=sup]").forEach(x => x.onchange = () => { S.updateProfile({ support: +x.value, tasks: [] }); if (REMOTE) REMOTE.setSupport(+x.value).catch(() => {}); play("tap"); });
   $("#out").onclick = async () => {
     if (!confirm(DEMO ? "Reset the demo? Your demo progress in this browser will be deleted." : "Sign out on this device?")) return;
     if (!DEMO) await (await import("./auth.js")).signOut();

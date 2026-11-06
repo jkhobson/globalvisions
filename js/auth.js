@@ -62,7 +62,7 @@ export async function isTeacher() {
 // Teacher: their classes with codes and the nicknames that have joined.
 export async function teacherClasses() {
   const c = await sb();
-  const { data, error } = await c.from("classes").select("id, name, code, students(nick, avatar, joined_at)").order("created_at");
+  const { data, error } = await c.from("classes").select("id, name, code, settings, students(nick, avatar, joined_at)").order("created_at");
   if (error) throw error;
   return data || [];
 }
@@ -79,4 +79,55 @@ export async function createClass(name) {
     if (!/duplicate|unique/i.test(error.message)) return { error: error.message };
   }
   return { error: "Couldn't make a unique code. Try again." };
+}
+
+/* ---------------- saved work ---------------- */
+// Uploads one finished activity; the server returns the XP it worked out.
+export async function saveAttempt(clientId, textId, answers) {
+  const c = await sb();
+  const slim = answers.map(a => a.reflection ? { item: a.item, reflection: true, text: a.text }
+    : a.game ? { item: a.item, v: a.v } : { item: a.item, picks: a.picks || [], simplified: !!a.simplified, help: a.help || 0, ms: a.ms || 0 });
+  const { data, error } = await c.rpc("save_attempt", { p_client_id: clientId, p_text_id: textId, p_answers: slim });
+  if (error) throw error;
+  return data;
+}
+// This student's saved work, oldest first.
+export async function myAttempts() {
+  const c = await sb();
+  const { data, error } = await c.from("attempts").select("client_id, text_id, mode, answers, xp, created_at").order("created_at");
+  if (error) throw error;
+  return data || [];
+}
+// Leaderboards for the student's own class (nicknames only).
+export async function classBoard() {
+  const c = await sb();
+  const { data, error } = await c.rpc("class_board");
+  if (error) throw error;
+  return data || [];
+}
+// The student's class settings (open islands, leaderboards on or off).
+export async function myClassSettings() {
+  const c = await sb();
+  const { data } = await c.from("classes").select("settings").maybeSingle();
+  return data && data.settings;
+}
+export async function setSupport(level) { const c = await sb(); await c.rpc("set_support", { p_level: level }); }
+
+/* ---------------- teacher ---------------- */
+export async function classAttempts(classId) {
+  const c = await sb();
+  const { data, error } = await c.from("attempts").select("user_id, text_id, answers, xp, created_at").eq("class_id", classId).order("created_at");
+  if (error) throw error;
+  return data || [];
+}
+export async function classStudents(classId) {
+  const c = await sb();
+  const { data, error } = await c.from("students").select("user_id, nick, avatar, support").eq("class_id", classId);
+  if (error) throw error;
+  return data || [];
+}
+export async function saveClassSettings(classId, settings) {
+  const c = await sb();
+  const { error } = await c.from("classes").update({ settings }).eq("id", classId);
+  if (error) throw error;
 }
