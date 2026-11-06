@@ -14,7 +14,13 @@ export const P_START = 0.3, P_MASTERED = 0.85;
 export function mastery(history, blocks = BLOCKS) {
   const p = Object.fromEntries(Object.keys(blocks).map(b => [b, P_START]));
   const answers = [...history].sort((a, b) => String(a.created_at).localeCompare(String(b.created_at))).flatMap(h => h.answers || []);
-  for (const a of answers) applyAnswer(p, a, blocks);
+  // A question the student already got right before may just be remembered, so a repeat right answer
+  // counts like a right-after-hint answer (a small step), not a full one.
+  const rightBefore = new Set();
+  for (const a of answers) {
+    applyAnswer(p, a.support === "none" && rightBefore.has(a.item) ? { ...a, support: "hint" } : a, blocks);
+    if (a.support === "none" && a.item) rightBefore.add(a.item);
+  }
   return p;
 }
 export function applyAnswer(p, a, blocks = BLOCKS) {
@@ -109,4 +115,18 @@ export function placeOptions(options, slot, rand = Math.random) {
   for (let i = wrong.length - 1; i > 0; i--) { const j = Math.floor(rand() * (i + 1)); [wrong[i], wrong[j]] = [wrong[j], wrong[i]]; }
   wrong.splice(slot % options.length, 0, options[0]);
   return wrong;
+}
+
+/* ---------------- fresh questions ---------------- */
+// How many times each question (item id) appears in the student's history.
+export function seenCounts(history) {
+  const c = {};
+  history.flatMap(h => h.answers || []).forEach(a => { if (a.item) c[a.item] = (c[a.item] || 0) + 1; });
+  return c;
+}
+// From several versions of a question, the one this student has seen least (ties broken at random).
+export function freshest(ids, counts, rand = Math.random) {
+  const least = Math.min(...ids.map(id => counts[id] || 0));
+  const pool = ids.filter(id => (counts[id] || 0) === least);
+  return pool[Math.floor(rand() * pool.length)];
 }

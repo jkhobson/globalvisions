@@ -2,7 +2,7 @@
 import { BLOCKS, OBJECTIVES, SKILLS, SKILL_ICON, SUPPORT, TRAPS } from "./content/curriculum.js";
 import { WORLDS } from "./content/worlds.js";
 import { GLOSSARY, ITEMS, MISSION, SOURCES, TRUST_CARDS } from "./content/fizz.js";
-import { applyAnswer, mastery, nextBlock, nextDemand, nextSupport, rank, ranks, trapCounts, wrapping, mastered, dealSlots, placeOptions } from "./engine.js";
+import { applyAnswer, mastery, nextBlock, nextDemand, nextSupport, rank, ranks, trapCounts, wrapping, mastered, dealSlots, placeOptions, seenCounts, freshest } from "./engine.js";
 import * as S from "./store.js";
 import { DEMO } from "./config.js";
 import { demoClass } from "./demo-class.js";
@@ -181,15 +181,17 @@ function sourceCard(id, wrap) {
 }
 
 // Runs a list of items one after another. onAnswer(answer) after each; done(answers, help) at the end.
-// One even spread of right-answer positions across the whole mission (all phases together), dealt once per visit.
-let MISSION_SLOTS = null;
-function missionSlots() {
-  if (!MISSION_SLOTS) {
-    const ids = MISSION.phases.flatMap(p => p.items || []), deal = dealSlots(ids.length);
-    MISSION_SLOTS = Object.fromEntries(ids.map((id, i) => [id, deal[i]]));
-  }
-  return MISSION_SLOTS;
+// One mission run: for each question slot, the version this student has seen least, plus one even spread of
+// right-answer positions across all phases together. Made when the Briefing starts (or a replay starts).
+let MISSION_PLAN = null;
+function newMissionPlan() {
+  const counts = seenCounts(S.history());
+  const picks = Object.fromEntries(MISSION.phases.map(p => [p.kind, (p.items || []).map(v => Array.isArray(v) ? freshest(v, counts) : v)]));
+  const ids = Object.values(picks).flat(), deal = dealSlots(ids.length);
+  MISSION_PLAN = { picks, slots: Object.fromEntries(ids.map((id, i) => [id, deal[i]])) };
+  return MISSION_PLAN;
 }
+const missionPlan = () => MISSION_PLAN || newMissionPlan();
 function runItems(ids, { title, onDone, pick, slots: given } = {}) {
   const answers = []; let i = 0, help = 0;
   const box = document.createElement("div"); box.className = "runner";
@@ -307,7 +309,8 @@ function missionScreen() {
   intro.querySelector("#begin").onclick = () => {
     play("flip"); stage.innerHTML = "";
     const before = ranks(mastery(S.history()));
-    stage.appendChild(runItems(phase.items, { title: phase.title, slots: phase.items.map(id => missionSlots()[id]), onDone: (answers, help) => {
+    const plan = phase.kind === "briefing" ? newMissionPlan() : missionPlan(), ids = plan.picks[phase.kind];
+    stage.appendChild(runItems(ids, { title: phase.title, slots: ids.map(id => plan.slots[id]), onDone: (answers, help) => {
       const att = S.saveAttempt({ id: `fizz-${phase.kind}`, mode: "mission", answers });
       const note = afterTask(help);
       stage.innerHTML = `<div class="card done"><h2>${phase.title} complete</h2><p>+${att.xp} XP</p>${note}<button class="btn" id="nextPhase">Next phase</button> <a class="btn ghost" href="#/">Map</a></div>`;
@@ -345,10 +348,10 @@ function missionDone() {
 }
 function replayMission() {
   // Replay runs all question phases in one go (replay XP rules apply: half today, then nothing).
-  const items = MISSION.phases.flatMap(p => p.items || []);
+  const plan = newMissionPlan(), items = Object.values(plan.picks).flat();
   page(`<p class="kicker">Replay · ${MISSION.title}</p><div id="stage"></div>`);
   const before = ranks(mastery(S.history()));
-  $("#stage").appendChild(runItems(items, { title: "Replay", onDone: (answers, help) => {
+  $("#stage").appendChild(runItems(items, { title: "Replay", slots: items.map(id => plan.slots[id]), onDone: (answers, help) => {
     const att = S.saveAttempt({ id: "fizz-replay", mode: "mission", answers });
     const note = afterTask(help);
     $("#stage").innerHTML = `<div class="card done"><h2>Replay complete</h2><p>+${att.xp} XP${att.xp === 0 ? " (replays pay half the first time each day, then nothing)" : ""}</p>${note}<a class="btn" href="#/">Map</a></div>`;
@@ -364,14 +367,15 @@ function gym() {
     <p class="small">Focus now: <b>${BLOCKS[blockNow].name}</b></p><button class="btn" id="go">Start</button></div><div id="stage"></div>`);
   $("#go").onclick = () => {
     $("#go").closest(".card").remove();
-    const live = { ...p }, seen = new Set(), before = ranks(p);
+    const live = { ...p }, seen = new Set(), before = ranks(p), counts = seenCounts(S.history());
     let demand = S.profile().gymDemand || 0;
     const pick = answers => {
       if (answers.length) { applyAnswer(live, answers[answers.length - 1]); demand = nextDemand(demand, answers); }
       const b = nextBlock(live, "Evaluation");
       const pool = ITEMS.filter(i => BLOCKS[i.block].skill === "Evaluation" && !seen.has(i.id));
-      const best = pool.filter(i => i.block === b).sort((x, y) => Math.abs(x.demand - demand) - Math.abs(y.demand - demand))[0]
-        || pool.sort((x, y) => Math.abs(x.demand - demand) - Math.abs(y.demand - demand))[0];
+      // Least-seen questions first, then the closest to the right difficulty.
+      const order = (x, y) => ((counts[x.id] || 0) - (counts[y.id] || 0)) || (Math.abs(x.demand - demand) - Math.abs(y.demand - demand)) || (Math.random() - 0.5);
+      const best = pool.filter(i => i.block === b).sort(order)[0] || pool.sort(order)[0];
       if (best) seen.add(best.id); return best && best.id;
     };
     $("#stage").appendChild(runItems(5, { title: "Think Gym", pick, onDone: (answers, help) => {
@@ -386,9 +390,10 @@ function gym() {
 }
 
 /* ---------------- Trust or Bust: game ---------------- */
-// 4 Trust and 4 Bust cards in a mixed order, never 3 of the same answer in a row.
+// 4 Trust and 4 Bust cards in a mixed order, never 3 of the same answer in a row. Cards seen least come first.
 function balancedCards() {
-  const pickN = ok => shuffle(TRUST_CARDS.filter(c => c.ok === ok)).slice(0, 4);
+  const counts = seenCounts(S.history()), seen = c => counts[`trust-${TRUST_CARDS.indexOf(c)}`] || 0;
+  const pickN = ok => shuffle(TRUST_CARDS.filter(c => c.ok === ok)).sort((a, b) => seen(a) - seen(b)).slice(0, 4);
   const yes = pickN(true), no = pickN(false);
   return dealSlots(yes.length + no.length, 2).map(s => (s ? yes : no).pop()).filter(Boolean);
 }

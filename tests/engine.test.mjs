@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { mastery, applyAnswer, nextBlock, rank, nextDemand, nextSupport, answerXP, wrapping, P_START, trapCounts, dealSlots, placeOptions } from "../js/engine.js";
+import { mastery, applyAnswer, nextBlock, rank, nextDemand, nextSupport, answerXP, wrapping, P_START, trapCounts, dealSlots, placeOptions, seenCounts, freshest } from "../js/engine.js";
 
 const at = (answers, t = "2026-11-06T01:00:00Z") => ({ text_id: "x", created_at: t, answers });
 const right = (block, demand = 0) => ({ block, demand, support: "none" });
@@ -79,4 +79,20 @@ test("Right answers are spread evenly across positions, never 3 in a row", () =>
   }
   const opts = [{ t: "right" }, { t: "a" }, { t: "b" }, { t: "c" }];
   for (let k = 0; k < 4; k++) { const p = placeOptions(opts.map(o => ({ ...o })), k, rand); assert.equal(p[k].t, "right"); assert.equal(p.length, 4); }
+});
+
+test("a remembered right answer counts less than a first right answer", () => {
+  const once = mastery([at([{ item: "q1", block: "E1", support: "none" }])]).E1;
+  const twiceSame = mastery([at([{ item: "q1", block: "E1", support: "none" }, { item: "q1", block: "E1", support: "none" }])]).E1;
+  const twoDifferent = mastery([at([{ item: "q1", block: "E1", support: "none" }, { item: "q2", block: "E1", support: "none" }])]).E1;
+  assert.ok(twiceSame > once && twiceSame < twoDifferent, `${once} ${twiceSame} ${twoDifferent}`);
+});
+
+test("replays pick the version seen least", () => {
+  const counts = seenCounts([at([{ item: "a" }, { item: "a" }, { item: "b" }])]);
+  assert.deepEqual(counts, { a: 2, b: 1 });
+  assert.equal(freshest(["a", "b", "c"], counts), "c");
+  assert.equal(freshest(["a", "b"], counts), "b");
+  const picks = new Set(Array.from({ length: 50 }, () => freshest(["x", "y"], {})));
+  assert.equal(picks.size, 2);
 });

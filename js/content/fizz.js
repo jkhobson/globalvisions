@@ -215,7 +215,209 @@ export const ITEMS = [
       { t: "The survey is from 2025, so it is too old to use now", trap: "old-source" },
       { t: "The survey only asked adults, not students like us", trap: "wrong-group" }],
     hint: "Read the last lines of the survey. What does it say it does NOT prove?",
-    explain: "Other things, like brushing and sweets, also cause decay. A link shows they happen together, not that one is the only cause." }
+    explain: "Other things, like brushing and sweets, also cause decay. A link shows they happen together, not that one is the only cause." },
+  /* ---------- More versions of each mission question, so a replay asks something new ---------- */
+  // Briefing: research question (R2)
+  { id: "r2-fizz-02", block: "R2", demand: 0,
+    stem: { simple: "Which question can you really research on Harvest Key?", std: "Your team must choose one research question about sugary drinks on Harvest Key. Which is focused enough to research well?" },
+    options: [
+      { t: "Why do students on Harvest Key choose sugary drinks at school?" },
+      { t: "What do people think about drinks?", trap: "vague-question" },
+      { t: "Is ZapFizz the most popular drink sold in the Harvest Key school shop?", trap: "yes-no-question" },
+      { t: "Should every country in the world ban all sugary drinks forever?", trap: "yes-no-question" }],
+    hint: "A good question is not too big, not too small, and can't be answered with just yes or no.",
+    explain: "\"Why do students on Harvest Key choose sugary drinks?\" names the place and the people and needs research. Questions starting with Is or Should can be answered yes or no, and \"What do people think about drinks?\" is far too broad." },
+  { id: "r2-fizz-03", block: "R2", demand: 1,
+    stem: { simple: "A classmate wrote: \"Are sugary drinks bad?\" Which is the best way to improve it?", std: "A classmate's first research question is \"Are sugary drinks bad?\" Which version improves it most?" },
+    options: [
+      { t: "To what extent do sugary drinks affect students' teeth on Harvest Key?" },
+      { t: "Are sugary drinks really, really bad for everybody in the whole world?", trap: "yes-no-question" },
+      { t: "Are sugary drinks bad for the teeth of the students who live on Harvest Key?", trap: "yes-no-question" },
+      { t: "What is a drink?", trap: "vague-question" }],
+    hint: "Adding more detail is good, but does the question still start with Are?",
+    explain: "Starting with \"To what extent\" turns a yes/no question into one you must research. Adding detail to a question that starts with Are still leaves a yes/no question." },
+
+  // E1: who made it and why
+  { id: "e1-zap-02", block: "E1", demand: 1, source: "src-zap",
+    stem: { simple: "Who made this advert? What do they get if you believe it?", std: "Who created the ZapFizz advert, and what do they gain if readers believe it?" },
+    options: [
+      { t: "ZapFizz Drinks Ltd: they earn money when you buy" },
+      { t: "A school: they want more students to pass their tests", trap: "author-not-checked" },
+      { t: "Doctors: they want students to have more energy in class", trap: "author-not-checked" },
+      { t: "Students at a camp: they simply like the taste a lot", trap: "vested-interest-missed" }],
+    hint: "Find the author on the card. What does that company sell?",
+    explain: "ZapFizz Drinks Ltd made it. The more people believe the advert, the more cans they sell, so they have a vested interest." },
+  { id: "e1-zap-03", block: "E1", demand: 2, source: "src-zap",
+    stem: { simple: "The advert says drink ZapFizz \"before every test\". Why should you be careful?", std: "The advert tells students to drink ZapFizz \"before every test\". Why should you be careful about this advice?" },
+    options: [
+      { t: "The seller gains if you believe it, and shows no proof" },
+      { t: "It is fine: companies may only print things that are true", trap: "vested-interest-missed" },
+      { t: "It is fine: the advert says 9 out of 10 students agree with it", trap: "small-sample" },
+      { t: "It is wrong because every fizzy drink makes you sleepy", trap: "claim-no-evidence" }],
+    hint: "Who is giving the advice? Is there any evidence that it helps in tests?",
+    explain: "Advice from someone who sells the product needs checking. The advert gives no evidence that the drink helps in tests." },
+
+  // E3: bias and emotive language (Lina)
+  { id: "e3-lina-02", block: "E3", demand: 1, source: "src-lina",
+    stem: { simple: "Why does Lina write \"ONE week\" in capital letters?", std: "Why might @FitLifeLina write \"ONE week\" in capital letters?" },
+    options: [
+      { t: "To grab attention and make her plan sound amazing" },
+      { t: "Because capital letters show that the fact has been checked", trap: "emotive-hook" },
+      { t: "Because it is the most important scientific result in the post", trap: "claim-no-evidence" },
+      { t: "Because a doctor told her to write it that way", trap: "author-not-checked" }],
+    hint: "Do capital letters add facts, or feelings?",
+    explain: "Capitals make a claim feel exciting. They add no evidence, and she wants you to buy her plan." },
+  { id: "e3-lina-03", block: "E3", demand: 2, source: "src-lina",
+    stem: { simple: "Which words best describe this post?", std: "Which description of @FitLifeLina's post as a source is most accurate?" },
+    options: [
+      { t: "One-sided: it uses feelings to sell a plan" },
+      { t: "Balanced: she honestly shares her own real-life experience", trap: "anecdote-as-proof" },
+      { t: "Expert: she has 300,000 followers, so she must know the facts", trap: "author-not-checked" },
+      { t: "Useless: posts on social media can never contain any true facts", trap: "all-or-nothing" }],
+    hint: "Does it show both sides? What is she selling?",
+    explain: "The post shows one side, uses fear and capitals, and ends with an advert. Followers are not the same as expertise." },
+
+  // E2: reliability (newspaper)
+  { id: "e2-news-02", block: "E2", demand: 1, source: "src-news",
+    stem: { simple: "The article says fizzy drink sales fell. What should you check first?", std: "The article reports that fizzy drink sales fell. What should you check before using this fact?" },
+    options: [
+      { t: "If it is still true now, as it is from 2009" },
+      { t: "Nothing: a fact that was true once stays true forever", trap: "old-source" },
+      { t: "Whether the newspaper's name sounds important enough to trust", trap: "author-not-checked" },
+      { t: "Whether the shop owner in the article likes fruit juice", trap: "claim-no-evidence" }],
+    hint: "Look at the year on the card. A lot can change since then.",
+    explain: "Sales change over time. A fact from 2009 may not be true now, so check for something recent." },
+  { id: "e2-news-03", block: "E2", demand: 2, source: "src-news",
+    stem: { simple: "Which source would be better than this old article?", std: "You want evidence about drink sales on Harvest Key now. Which source would best replace this article?" },
+    options: [
+      { t: "A shop sales report from this year" },
+      { t: "The same 2009 article, shared again on social media in 2026", trap: "old-source" },
+      { t: "A 2009 article about the same topic from a different newspaper", trap: "old-source" },
+      { t: "A comment from one shop owner who remembers 2009", trap: "anecdote-as-proof" }],
+    hint: "Sharing something again doesn't make it new. Which one is about now?",
+    explain: "A report from this year answers a question about now. Re-sharing an old article doesn't update it." },
+
+  // E1: who made it and why (report)
+  { id: "e1-report-02", block: "E1", demand: 0, source: "src-report",
+    stem: { simple: "What does the Health Service want to happen?", std: "What action does the Health Service recommend in its report?" },
+    options: [
+      { t: "Free water for students at school" },
+      { t: "Students should buy more sugary drinks", trap: "author-not-checked" },
+      { t: "Everyone should buy a 7-Day Clean Plan", trap: "author-not-checked" },
+      { t: "Students should stop going to the dentist", trap: "claim-no-evidence" }],
+    hint: "Read the last sentence of the report.",
+    explain: "The report ends by suggesting free water at school. Its purpose is students' health, not selling a product." },
+  { id: "e1-report-03", block: "E1", demand: 2, source: "src-report",
+    stem: { simple: "Why does it help that the Health Service made this, not a drinks company?", std: "Why does it matter that the survey comes from the Health Service rather than a drinks company?" },
+    options: [
+      { t: "It earns nothing from what the survey finds" },
+      { t: "Health workers never make any mistakes in their work", trap: "all-or-nothing" },
+      { t: "Drinks companies are not allowed to do any surveys", trap: "claim-no-evidence" },
+      { t: "Its report is longer, so it must have been more careful", trap: "all-or-nothing" }],
+    hint: "Think about who gains money from each possible result.",
+    explain: "The Health Service doesn't sell drinks, so it has no money reason to want one answer. That is not the same as never making mistakes." },
+
+  // E3: bias (funded study)
+  { id: "e3-study-02", block: "E3", demand: 1, source: "src-study",
+    stem: { simple: "Who paid for this study?", std: "According to the funding note, who paid for this research?" },
+    options: [
+      { t: "The Island Soft Drinks Association" },
+      { t: "The Harvest Key Health Service", trap: "author-not-checked" },
+      { t: "The 300 adults who took part in the study", trap: "author-not-checked" },
+      { t: "Nobody: scientists always pay for their own studies", trap: "vested-interest-missed" }],
+    hint: "Read the small print at the end.",
+    explain: "The soft drinks makers paid. Always look for who paid, because they may want a certain result." },
+  { id: "e3-study-03", block: "E3", demand: 2, source: "src-study",
+    stem: { simple: "The study says soft drinks \"can be part of a balanced diet\". How should you treat this?", std: "The authors conclude that soft drinks \"can be part of a balanced diet\". How should you treat this conclusion?" },
+    options: [
+      { t: "With care: the people who paid want this result" },
+      { t: "Trust it fully: it took two years, so it must be careful", trap: "vested-interest-missed" },
+      { t: "Ignore all of it: every study with funding is full of lies", trap: "all-or-nothing" },
+      { t: "Trust it fully: 300 adults is enough to know about children too", trap: "wrong-group" }],
+    hint: "Not \"trust\" or \"ignore\": what is the careful middle answer?",
+    explain: "Funding by drink makers is a reason for caution, not proof it is false. Check it against sources with no vested interest." },
+
+  // E2: reliability (nurse)
+  { id: "e2-nurse-02", block: "E2", demand: 1, source: "src-nurse",
+    stem: { simple: "What is the biggest weakness of the nurse's evidence?", std: "What is the main weakness of the nurse's interview as evidence?" },
+    options: [
+      { t: "She hasn't counted, so there are no numbers" },
+      { t: "She is a nurse, so she knows nothing about what students drink", trap: "all-or-nothing" },
+      { t: "She works at the school, so drink companies must pay her", trap: "author-not-checked" },
+      { t: "It is from 2026, so it is much too old to use now", trap: "old-source" }],
+    hint: "Read what she says about counting.",
+    explain: "She says herself that she hasn't counted. Her view is useful, but without numbers it is weaker evidence." },
+  { id: "e2-nurse-03", block: "E2", demand: 2, source: "src-nurse",
+    stem: { simple: "How could you make the nurse's evidence stronger?", std: "What would most improve the nurse's evidence about energy drinks and headaches?" },
+    options: [
+      { t: "Count headache visits and drinks for a month" },
+      { t: "Ask her to repeat it more strongly and with more feeling", trap: "emotive-hook" },
+      { t: "Use only her words and ignore the big survey completely", trap: "all-or-nothing" },
+      { t: "Find one student who says they agree with the nurse", trap: "anecdote-as-proof" }],
+    hint: "What is she missing? How could someone collect it?",
+    explain: "Counting cases over time turns an impression into data. One more story or stronger words would not." },
+
+  // E4: strength of evidence (compare)
+  { id: "e4-compare-02", block: "E4", demand: 1,
+    stem: { simple: "Which is better evidence about students' teeth: the Health Service survey or @FitLifeLina's post?", std: "Which gives better evidence about sugary drinks and students' teeth: the Health Service survey or @FitLifeLina's post?" },
+    options: [
+      { t: "The survey: it studied many students" },
+      { t: "Lina's post: she has 300,000 followers who agree with her", trap: "author-not-checked" },
+      { t: "Lina's post: her story is more exciting and easier to remember", trap: "emotive-hook" },
+      { t: "They are equal, because both of them talk about sugar", trap: "all-or-nothing" }],
+    hint: "Which one asked many people? Which one is one person's story?",
+    explain: "The survey looked at thousands of students. Lina's post is one person's story, and she is selling something." },
+  { id: "e4-compare-03", block: "E4", demand: 2,
+    stem: { simple: "Which list goes from STRONGEST to WEAKEST evidence about teenagers on Harvest Key?", std: "For a question about teenagers on Harvest Key, which order runs from strongest to weakest evidence?" },
+    options: [
+      { t: "Health survey, then nurse interview, then ZapFizz advert" },
+      { t: "ZapFizz advert, then nurse interview, then the Health Service survey", trap: "vested-interest-missed" },
+      { t: "Nurse interview, then ZapFizz advert, then the Health Service survey", trap: "anecdote-as-proof" },
+      { t: "Adult research study, then Health Service survey, then nurse interview", trap: "wrong-group" }],
+    hint: "Big and independent first. Partly useful in the middle. Selling something last.",
+    explain: "The survey is large and independent. The nurse is useful but uncounted. The advert has a vested interest and a tiny sample." },
+
+  // E5: judge an argument
+  { id: "e5-arg-04", block: "E5", demand: 0,
+    stem: { simple: "Which argument is stronger?\nA: \"Schools should give free water, because the Health Service asked 2,400 students and recommends it.\"\nB: \"Water is boring, so nobody will drink it anyway.\"",
+            std: "Compare the two arguments.\nA: \"Schools should provide free water, because the Health Service recommends it after surveying 2,400 students.\"\nB: \"Water is boring, so nobody will drink it anyway.\"\nWhich is more effective, and why?" },
+    options: [
+      { t: "A: it has a reason and expert evidence" },
+      { t: "B: it says what most students would probably think", trap: "claim-no-evidence" },
+      { t: "B: it is short and funny, so it is more convincing", trap: "emotive-hook" },
+      { t: "Neither: arguments about water are not important", trap: "all-or-nothing" }],
+    hint: "Which argument tells you where its evidence comes from?",
+    explain: "A gives a claim, a reason and evidence from a credible source. B is an opinion with no evidence." },
+  { id: "e5-arg-05", block: "E5", demand: 1,
+    stem: { simple: "Which argument is stronger?\nA: \"ZapFizz is healthy because the advert says it gives you energy.\"\nB: \"ZapFizz may not be healthy: each can has 9 teaspoons of sugar.\"",
+            std: "Compare the two arguments.\nA: \"ZapFizz is healthy, because the advert says it gives you energy.\"\nB: \"ZapFizz may not be healthy: the small print says each can contains 9 teaspoons of sugar.\"\nWhich is more effective, and why?" },
+    options: [
+      { t: "B: it uses a fact, not the seller's claim" },
+      { t: "A: the company knows more about its own drink than anyone", trap: "vested-interest-missed" },
+      { t: "A: energy is good for you, so the drink must be good too", trap: "claim-no-evidence" },
+      { t: "They are equal, because both of them are about ZapFizz", trap: "all-or-nothing" }],
+    hint: "Where does each argument's information come from?",
+    explain: "B uses a checkable fact. A repeats what the seller says, and the seller gains if you believe it." },
+  { id: "e5-arg-06", block: "E5", demand: 1,
+    stem: { simple: "\"Sugary drinks cause headaches. The nurse sees many students with headaches.\" What would make this argument stronger?",
+            std: "Read this argument: \"Sugary drinks cause headaches, because the school nurse sees many students with headaches.\" What would make it stronger?" },
+    options: [
+      { t: "Counted data linking drinks to headaches" },
+      { t: "Saying it more loudly, with lots of exclamation marks!!!", trap: "emotive-hook" },
+      { t: "A story about one student who had a bad headache", trap: "anecdote-as-proof" },
+      { t: "Nothing: one nurse's view already proves the claim", trap: "all-or-nothing" }],
+    hint: "The argument has a claim and a reason. What kind of support is weak?",
+    explain: "The nurse's view is a start. Counted data that links the drinks to headaches would be real evidence." },
+  { id: "e5-arg-07", block: "E5", demand: 2, source: "src-report",
+    stem: { simple: "\"41% of students drink two or more sugary drinks a day.\" Which part of an argument is this?",
+            std: "In an argument for a ban, a student writes: \"41% of students drink two or more sugary drinks a day.\" Which part of the argument is this?" },
+    options: [
+      { t: "Evidence: a fact from a survey" },
+      { t: "The claim: it says what the school should do about drinks", trap: "claim-no-evidence" },
+      { t: "The reason: it explains why a ban would be a good idea", trap: "claim-no-evidence" },
+      { t: "An opinion: it is just what one person feels", trap: "all-or-nothing" }],
+    hint: "Does it say what should happen, why, or what is true?",
+    explain: "It is a fact from the Health Service survey, so it is evidence. The claim would be \"ban sugary drinks\"; a reason would explain why." }
 ];
 
 export const MISSION = {
@@ -225,10 +427,13 @@ export const MISSION = {
     std: "Agent, Harvest Key's council is deciding whether school shops should stop selling sugary drinks. Everyone has an opinion, and the sources disagree. Your job: build a research question, check every source in the dossier, and decide which evidence the council can trust."
   },
   phases: [
-    { kind: "briefing", title: "Briefing", skill: "Research", items: ["r2-fizz-01"] },
+    // Each question slot lists several versions. A replay asks the version the student has seen least.
+    { kind: "briefing", title: "Briefing", skill: "Research", items: [["r2-fizz-01", "r2-fizz-02", "r2-fizz-03"]] },
     { kind: "dossier", title: "Field Dossier", skill: "Evaluation",
-      items: ["e1-zap-01", "e3-lina-01", "e2-news-01", "e1-report-01", "e3-study-01", "e2-nurse-01"] },
-    { kind: "board", title: "Evidence Board", skill: "Evaluation", items: ["e4-compare-01", "e5-arg-01", "e5-arg-02"] },
+      items: [["e1-zap-01", "e1-zap-02", "e1-zap-03"], ["e3-lina-01", "e3-lina-02", "e3-lina-03"], ["e2-news-01", "e2-news-02", "e2-news-03"],
+              ["e1-report-01", "e1-report-02", "e1-report-03"], ["e3-study-01", "e3-study-02", "e3-study-03"], ["e2-nurse-01", "e2-nurse-02", "e2-nurse-03"]] },
+    { kind: "board", title: "Evidence Board", skill: "Evaluation",
+      items: [["e4-compare-01", "e4-compare-02", "e4-compare-03"], ["e5-arg-01", "e5-arg-04", "e5-arg-05"], ["e5-arg-02", "e5-arg-06", "e5-arg-07"]] },
     { kind: "debrief", title: "Debrief", skill: "Reflection" }
   ],
   debrief: {
@@ -255,5 +460,23 @@ export const TRUST_CARDS = [
   { t: "An encyclopedia entry written by named experts, updated this year", ok: true, why: "Named experts and up to date." },
   { t: "A car company report saying its new car is the safest ever", ok: false, trap: "vested-interest-missed", why: "The company sells the car." },
   { t: "A school's own record of how many students came to the library each week", ok: true, why: "Primary data from the people who counted it." },
-  { t: "A blog with no author name and no date", ok: false, trap: "author-not-checked", why: "We can't check who wrote it or when." }
+  { t: "A blog with no author name and no date", ok: false, trap: "author-not-checked", why: "We can't check who wrote it or when." },
+  { t: "A city library's count of books borrowed each month in 2025", ok: true, why: "Recent records kept by the people who did the counting." },
+  { t: "A science museum page about volcanoes, written by named geologists", ok: true, why: "Named experts writing about their own subject." },
+  { t: "A national statistics office report on school attendance from last year", ok: true, why: "Official, recent and about the whole country." },
+  { t: "A river study by two universities, with all of its data published", ok: true, why: "Expert authors, and anyone can check the data." },
+  { t: "A hospital leaflet on handwashing, checked by doctors this year", ok: true, why: "Expert-checked and up to date." },
+  { t: "A survey of 3,000 families across the country, with its questions shown", ok: true, why: "Large sample and an open method." },
+  { t: "A well-known dictionary's entry for a science word", ok: true, why: "Checked by experts, and it sells nothing about the topic." },
+  { t: "A school's own weighing of its recycling bins every week for a term", ok: true, why: "Measured data from the people who collected it." },
+  { t: "A weather service storm warning issued this morning", ok: true, why: "Expert source, and it is current." },
+  { t: "A toy company's advert saying its game makes children smarter", ok: false, trap: "vested-interest-missed", why: "They sell the game, so they gain if you believe it." },
+  { t: "A post: 'My uncle never wore a seatbelt and was fine, so seatbelts don't matter'", ok: false, trap: "anecdote-as-proof", why: "One person's luck is not proof for everyone." },
+  { t: "A 2005 guide to the best mobile phones to buy", ok: false, trap: "old-source", why: "Far too old for a question about phones today." },
+  { t: "A poll of 5 friends about the best football team in the world", ok: false, trap: "small-sample", why: "5 friends can't speak for the whole world." },
+  { t: "A page with no author: 'Scientists say chocolate is a vegetable'", ok: false, trap: "author-not-checked", why: "Which scientists? We can't check who wrote it." },
+  { t: "A video: 'This ONE trick will make you RICH overnight!!!'", ok: false, trap: "emotive-hook", why: "Big promises and shouting are hooks, not evidence." },
+  { t: "A study of adult runners, used to decide how much sleep 12-year-olds need", ok: false, trap: "wrong-group", why: "Adult runners are a different group from 12-year-olds." },
+  { t: "A headline: 'Ice cream sales and sunburn both rise, so ice cream causes sunburn'", ok: false, trap: "correlation-cause", why: "Both rise in hot, sunny weather. A link is not a cause." },
+  { t: "A bottled water company's report saying tap water is unsafe", ok: false, trap: "vested-interest-missed", why: "They sell bottled water, so they gain if you fear tap water." }
 ];

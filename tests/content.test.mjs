@@ -36,8 +36,15 @@ test("every source has a short and a long text, and every glossary word is defin
   }
 });
 
-test("mission phases point at real items", () => {
-  MISSION.phases.forEach(p => (p.items || []).forEach(i => assert.ok(ITEMS.some(x => x.id === i), i)));
+test("mission phases point at real items, with several versions of each question", () => {
+  const used = new Set();
+  MISSION.phases.forEach(p => (p.items || []).forEach(slot => {
+    const versions = [].concat(slot);
+    assert.ok(versions.length >= 3, `${versions[0]}: needs at least 3 versions so replays differ`);
+    versions.forEach(i => { assert.ok(ITEMS.some(x => x.id === i), i); assert.ok(!used.has(i), `${i} is in two slots`); used.add(i); });
+    const blocks = new Set(versions.map(i => ITEMS.find(x => x.id === i).block));
+    assert.equal(blocks.size, 1, `${versions[0]}: all versions should practise the same block`);
+  }));
   assert.ok(BLOCKS[MISSION.debrief.block]);
 });
 
