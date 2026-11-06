@@ -200,20 +200,46 @@ a.island { border-color: var(--good); }
 .walkbar .enter { flex: 1; min-width: 0; margin: 0; }
 @keyframes walk { from { transform: translateY(0) rotate(-6deg); } to { transform: translateY(-5px) rotate(6deg); } }
 
-/* ---------------- Harvest Key island map ---------------- */
+/* ---------------- the island: 3D ground and the walking agent ---------------- */
 .hero .btn.ghost.light { background: transparent; color: #fff; border: 2px solid rgb(255 255 255 / .7); box-shadow: none; }
-.isle { position: relative; aspect-ratio: 4 / 5; max-height: 70vh; margin: 10px auto; border-radius: 20px; overflow: hidden; touch-action: none; user-select: none;
-  background: radial-gradient(ellipse 46% 44% at 50% 52%, #d9c38a 0 80%, transparent 81%), radial-gradient(ellipse 50% 48% at 50% 52%, #7fc28b 0 92%, transparent 93%), var(--sea);
-  border: 2px solid var(--line); }
-.isle::before { content: ""; position: absolute; inset: 14% 12%; border-radius: 45%;
-  background: radial-gradient(circle at 30% 30%, #8fd19a 0 18%, transparent 19%), radial-gradient(circle at 70% 65%, #8fd19a 0 14%, transparent 15%); opacity: .7; }
-.spot { position: absolute; transform: translate(-50%, -50%); display: grid; justify-items: center; gap: 2px; border: 0; background: none; color: #1d2a1d; cursor: pointer; z-index: 1; width: 22%; padding: 0; }
-.spot .si { position: relative; font-size: 1.9rem; line-height: 1; filter: drop-shadow(0 3px 2px rgb(0 0 0 / .25)); }
-.spot small { color: #1d2a1d; font-weight: 700; font-size: .68rem; line-height: 1.1; background: rgb(255 255 255 / .88); border-radius: 6px; padding: 1px 5px; text-align: center; }
-.spot.found .si::after { content: "✔"; position: absolute; right: -10px; top: -6px; font-size: .7rem; color: #fff; background: var(--good); border-radius: 50%; padding: 1px 4px; }
-.spot.near small { background: var(--accent); color: #1e1400; }
-.spot.near .si { transform: scale(1.2); transition: transform .2s; }
-.isle .agent { font-size: 2rem; z-index: 2; }
-.casefile { display: flex; flex-wrap: wrap; gap: 6px; }
-@media (prefers-reduced-motion: reduce) { .spot.near .si { transition: none; } }
-@media (prefers-reduced-motion: reduce) { .agent { transition: none; } .agent.walking .bob { animation: none; } }
+.world { position: relative; height: min(60vh, 440px); margin: 6px 0 10px; border-radius: 20px; overflow: hidden; perspective: 900px; perspective-origin: 50% 50%;
+  background: linear-gradient(to bottom, #9fd8f5 0%, #cdeefa 10%, #4fb3d9 11%, #2a8fbf 100%); border: 2px solid var(--line); touch-action: manipulation; cursor: pointer; user-select: none; }
+:root[data-theme=dark] .world { background: linear-gradient(to bottom, #1d3550 0%, #2b4a6b 10%, #17557a 11%, #0f3f5c 100%); }
+.ground { position: absolute; left: 0; right: 0; top: -35%; bottom: -35%; transform: rotateX(52deg); transform-origin: 50% 50%; pointer-events: none; }
+.ground span { position: absolute; border-radius: 50%; }
+.ground .beach { inset: 2% 3%; background: #e9d49a; box-shadow: 0 0 0 10px rgb(255 255 255 / .35); }
+.ground .grass { inset: 7% 8%; background: radial-gradient(circle at 30% 30%, #8fd67f 0 25%, transparent 26%), radial-gradient(circle at 70% 70%, #7cc96e 0 22%, transparent 23%), #6dbb6a; }
+.ground .path { inset: 30% 30%; border: 10px dashed rgb(240 225 180 / .9); }
+.layer { position: absolute; inset: 0; pointer-events: none; }
+.layer > * { position: absolute; left: 0; top: 0; pointer-events: auto; will-change: transform; }
+.place { display: grid; justify-items: center; gap: 2px; border: 0; background: none; padding: 0; cursor: pointer; transform-origin: 50% 100%; }
+.place .pi { font-size: 2.3rem; line-height: 1; filter: drop-shadow(0 6px 3px rgb(0 0 0 / .3)); transition: transform .2s; }
+.place small { color: #1d2a1d; font-weight: 700; font-size: .7rem; line-height: 1.1; background: rgb(255 255 255 / .9); border-radius: 6px; padding: 1px 6px; white-space: nowrap; }
+.place.here .pi { transform: translateY(-6px) scale(1.15); }
+.place.here small { background: var(--accent); color: #1e1400; }
+.place.done small::before { content: "✔ "; color: var(--good); }
+.place.next .pi { animation: beckon 1.2s ease-in-out infinite; }
+@keyframes beckon { 50% { transform: translateY(-8px); } }
+
+.agent3d { width: 60px; height: 92px; transform-origin: 50% 100%; pointer-events: none !important; }
+.a-shadow { position: absolute; left: 10px; right: 10px; bottom: -5px; height: 12px; border-radius: 50%; background: rgb(0 0 0 / .28); }
+.a-body { position: absolute; inset: 0; transform: rotateY(calc((1 - var(--face, 1)) * 90deg)); transition: transform .3s ease; transform-style: preserve-3d; }
+.agent3d.walking .a-body { animation: a-bob .36s ease-in-out infinite alternate; }
+.a-head { position: absolute; left: 50%; top: 0; transform: translateX(-50%); font-size: 34px; line-height: 1; z-index: 3; }
+.a-coat { position: absolute; left: 15px; top: 30px; width: 30px; height: 34px; border-radius: 12px 12px 8px 8px; background: #3d5a80; box-shadow: inset -5px 0 0 rgb(0 0 0 / .15); z-index: 2; }
+.a-badge { position: absolute; left: 5px; top: 7px; font-size: 10px; color: var(--accent); }
+.agent3d.away .a-badge { display: none; }
+.agent3d.away .a-head { filter: brightness(.75); }
+.a-arm { position: absolute; top: 33px; width: 8px; height: 24px; border-radius: 4px; background: #3d5a80; transform-origin: 50% 3px; z-index: 1; }
+.a-arm.l { left: 10px; transform: rotate(10deg); } .a-arm.r { right: 10px; transform: rotate(-10deg); z-index: 3; }
+.a-hand { position: absolute; bottom: -6px; left: -1px; width: 10px; height: 10px; border-radius: 50%; background: #f2c9a0; }
+.a-leg { position: absolute; top: 60px; width: 9px; height: 24px; border-radius: 4px; background: #24344d; transform-origin: 50% 2px; }
+.a-leg.l { left: 20px; } .a-leg.r { right: 20px; }
+.a-foot { position: absolute; bottom: -4px; left: -2px; width: 15px; height: 7px; border-radius: 6px 8px 3px 3px; background: #1a1a1a; }
+.agent3d.walking .a-leg.l, .agent3d.walking .a-arm.r { animation: a-swing .36s ease-in-out infinite alternate; }
+.agent3d.walking .a-leg.r, .agent3d.walking .a-arm.l { animation: a-swing .36s ease-in-out infinite alternate-reverse; }
+@keyframes a-swing { from { transform: rotate(28deg); } to { transform: rotate(-28deg); } }
+@keyframes a-bob { from { translate: 0 0; } to { translate: 0 -4px; } }
+.isle-go { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; min-height: 52px; }
+.isle-go p { margin: 0; flex: 1 1 160px; }
+@media (prefers-reduced-motion: reduce) { .agent3d.walking .a-body, .agent3d.walking .a-leg, .agent3d.walking .a-arm, .place.next .pi { animation: none; } .a-body { transition: none; } }

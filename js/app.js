@@ -12,6 +12,7 @@ import { weeklyStreak, weekKey, gameXP } from "./kit/rewards.js";
 import { play, soundUser, soundOn, setSound, say, canSpeak } from "./kit/sound.js";
 import * as Cel from "./kit/celebrate.js";
 import * as FX from "./kit/game-fx.js";
+import { mountIsland } from "./kit/walker.js";
 
 const $ = s => document.querySelector(s);
 const app = $("#app");
@@ -172,13 +173,15 @@ function home() {
       <p class="small">Tip: add this app to your home screen. iPhone: Share → Add to Home Screen. Android: menu ⋮ → Add to Home screen.</p>
       <button class="btn" id="introOk">Got it</button></section>`;
   page(`${intro}
+    <section class="card isle-card"><p class="kicker">🥭 Harvest Key · tap a place to walk there</p>
+      <div id="isle"></div>
+      <div class="isle-go" id="isleGo" aria-live="polite"><p class="small">Tap a place to walk there. Find the six sources for your case file.</p></div></section>
     <section class="hero card">
       <p class="kicker">Today's mission · Harvest Key</p>
       <h2>${MISSION.title}</h2>
       <p>${done >= 1 ? "Mission complete. Replay it, or train in the Think Gym." : `Next: ${nextPhase.title}`}</p>
       <div class="bar"><i style="width:${Math.round(done * 100)}%"></i></div>
       <a class="btn" href="#/mission">${done > 0 && done < 1 ? "Continue" : done >= 1 ? "Replay" : "Start mission"}</a>
-      <a class="btn ghost light" href="#/island">🚶 Explore the island</a>
     </section>
     <div class="tiles">
       <a class="tile" href="#/gym"><span>🏋️</span><b>Think Gym</b><small>5 quick questions at your level</small></a>
@@ -189,11 +192,12 @@ function home() {
     <h3 class="sec">The archipelago</h3>
     <div class="islands">${WORLDS.map(w => {
       const isOpen = open.includes(w.id), h = islandHealth(w), stamp = S.flags()[`stamp-${w.id}`];
-      return `<${isOpen && w.missions ? "a href=\"#/island\"" : "div"} class="island${isOpen ? "" : " locked"}">
+      return `<${isOpen && w.missions ? "a href=\"#/mission\"" : "div"} class="island${isOpen ? "" : " locked"}">
         <span class="ic">${w.icon}</span><b>${w.island}</b><small>${w.challenge} · ${w.title}</small>
         ${isOpen ? `<div class="bar health" title="Island health"><i style="width:${h}%"></i></div><small>Island health ${h}%${stamp ? " · 🛂" : ""}</small>`
                  : `<small class="lock">🔒 Opens with ${w.challenge} (${w.weeks})</small>`}
       </${isOpen && w.missions ? "a" : "div"}>`; }).join("")}</div>`);
+  islandScene($("#isle"), $("#isleGo"));
   const ok = $("#introOk"); if (ok) ok.onclick = () => { S.updateProfile({ seenIntro: true }); home(); };
 }
 
@@ -521,81 +525,54 @@ function game() {
   }).catch(() => { $("#gcard").innerHTML = offlineNote; $("#retry").onclick = game; });
 }
 
-/* ---------------- Harvest Key: walk around the island ---------------- */
-// Students walk their agent around the island. Walking into a place opens it: the Council Hall starts the mission,
-// and each source can be found where it comes from (the shop, the clinic, the newsstand...). Found sources go in the
-// agent's case file. Everything is fictional. Movement: arrow pad, arrow keys, drag, or tap anywhere to walk there.
+/* ---------------- Harvest Key: walk the agent between places ---------------- */
+// The Map screen shows the island in 3D. Students tap a place and their agent walks there, then they go in.
+// The Council Hall holds the mission; the six sources can be found where they come from and go into the case file.
+// Answering questions stays a plain tap: the walking is only for getting around. Everything here is fictional.
 const SPOTS = [
-  { id: "council", icon: "🏛️", name: "Council Hall", x: 50, y: 16, go: "#/mission", say: "The Chief is waiting with your mission." },
-  { id: "src-zap", icon: "🏪", name: "ZapFizz shop", x: 18, y: 32, source: "src-zap" },
-  { id: "src-report", icon: "🏥", name: "Health Service", x: 82, y: 30, source: "src-report" },
-  { id: "src-news", icon: "🗞️", name: "Newsstand", x: 30, y: 54, source: "src-news" },
-  { id: "src-study", icon: "🔬", name: "Research lab", x: 72, y: 52, source: "src-study" },
-  { id: "src-lina", icon: "📱", name: "Phone mast", x: 88, y: 72, source: "src-lina" },
-  { id: "src-nurse", icon: "🏫", name: "School clinic", x: 52, y: 70, source: "src-nurse" },
-  { id: "gym", icon: "🏋️", name: "Think Gym", x: 14, y: 76, go: "#/gym", say: "Five quick questions at your level." },
-  { id: "market", icon: "🕵️", name: "Market: Trust or Bust", x: 34, y: 88, go: "#/game", say: "Can you trust it? Play the game." },
-  { id: "board", icon: "🏆", name: "Noticeboard", x: 70, y: 88, go: "#/board", say: "Class leaderboards (nicknames only)." }
+  { id: "council", icon: "🏛️", name: "Council Hall", x: 50, y: 16, go: "#/mission" },
+  { id: "src-zap", icon: "🏪", name: "ZapFizz shop", x: 17, y: 30, source: "src-zap" },
+  { id: "src-report", icon: "🏥", name: "Health Service", x: 80, y: 28, source: "src-report" },
+  { id: "src-news", icon: "🗞️", name: "Newsstand", x: 30, y: 50, source: "src-news" },
+  { id: "src-study", icon: "🔬", name: "Research lab", x: 70, y: 47, source: "src-study" },
+  { id: "src-lina", icon: "📱", name: "Phone mast", x: 82, y: 64, source: "src-lina" },
+  { id: "src-nurse", icon: "🏫", name: "School clinic", x: 52, y: 64, source: "src-nurse" },
+  { id: "gym", icon: "🏋️", name: "Think Gym", x: 18, y: 70, go: "#/gym", say: "Five quick questions at your level." },
+  { id: "market", icon: "🕵️", name: "Trust or Bust", x: 30, y: 80, go: "#/game", say: "The market game: can you trust it?" },
+  { id: "board", icon: "🏆", name: "Noticeboard", x: 70, y: 80, go: "#/board", say: "Class leaderboards (nicknames only)." }
 ];
-let ISLAND_POS = { x: 50, y: 40 };                       // where the agent stands, kept while the app is open
-function island() {
-  const found = S.flags().found || [], av = esc(S.profile().avatar);
-  page(`<p class="kicker">🥭 Harvest Key</p><h2>Explore the island</h2>
-    <p class="small">Walk your agent to a place to go in. Find all six sources for your case file. <b>${found.length} of 6 found</b></p>
-    <div class="isle" id="isle" aria-label="Map of Harvest Key. Walk your agent with the arrow buttons or tap a place.">
-      ${SPOTS.map(p => `<button class="spot${found.includes(p.id) ? " found" : ""}" data-id="${p.id}" style="left:${p.x}%;top:${p.y}%"><span class="si">${p.icon}</span><small>${esc(p.name)}</small></button>`).join("")}
-      <span class="agent" id="me" style="left:${ISLAND_POS.x}%;top:${ISLAND_POS.y}%" aria-hidden="true"><span class="bob">${av}</span></span>
-    </div>
-    <div class="walkbar"><div class="pad">${[["left", "◀"], ["up", "▲"], ["down", "▼"], ["right", "▶"]].map(([d, i]) => `<button class="padb" data-d="${d}" aria-label="Move ${d}">${i}</button>`).join("")}</div>
-      <button class="btn enter" id="goin" disabled>Walk to a place</button></div>
-    <div id="spotcard" aria-live="polite"></div>
-    ${found.length ? `<h3 class="sec">My case file</h3><div class="casefile">${found.map(id => SOURCES[id] ? `<span class="chip">${SOURCES[id].icon} ${esc(SOURCES[id].kind)}</span>` : "").join("")}</div>` : ""}`);
-  const isle = $("#isle"), agent = $("#me"), goin = $("#goin"), card = $("#spotcard");
-  let x = ISLAND_POS.x, y = ISLAND_POS.y, at = null, walkT = 0, dragging = false;
-  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
-  function place(nx, ny, quick) {
-    agent.classList.toggle("flip", nx < x - 0.1);
-    x = clamp(nx, 5, 95); y = clamp(ny, 8, 94); ISLAND_POS = { x, y };
-    agent.classList.toggle("walking", !quick); agent.style.left = x + "%"; agent.style.top = y + "%";
-    clearTimeout(walkT); walkT = setTimeout(() => agent.classList.remove("walking"), 420);
-    const near = SPOTS.find(p => Math.hypot((p.x - x) * 1.6, p.y - y) < 9);   // the map is wider than tall
-    at = near || null;
-    isle.querySelectorAll(".spot").forEach(b => b.classList.toggle("near", at && b.dataset.id === at.id));
-    goin.disabled = !at; goin.textContent = at ? `Go into ${at.name}` : "Walk to a place";
-    if (!at) card.innerHTML = "";
+function islandScene(host, goBox) {
+  const found = S.flags().found || [], done = missionProgress();
+  const next = MISSION.phases.find(ph => !S.history().some(h => h.text_id === `fizz-${ph.kind}`));
+  const isle = mountIsland(host, { spots: SPOTS, avatar: esc(S.profile().avatar), start: S.flags().pos || { x: 50, y: 40 },
+    onMove: p => S.setFlag("pos", { x: Math.round(p.x), y: Math.round(p.y) }), onArrive: arrive });
+  SPOTS.forEach(sp => {
+    const el = host.querySelector(`.place[data-id="${sp.id}"]`);
+    if (sp.source && found.includes(sp.source)) el.classList.add("done");
+    if (sp.id === "council") { el.classList.toggle("next", done < 1); el.classList.toggle("done", done >= 1); }
+  });
+  function arrive(sp) {
+    play("tap");
+    const text = sp.id === "council" ? (done >= 1 ? "Mission complete. Replay it?" : `The Chief is waiting. Next: ${next.title}.`)
+      : sp.source ? (found.includes(sp.source) ? "Already in your case file." : "There's a source here. Collect it for your case file.") : sp.say;
+    goBox.innerHTML = `<p><b>${esc(sp.name)}</b><br><span class="small">${esc(text)}</span></p><button class="btn" id="goin">Go in</button>`;
+    $("#goin").onclick = () => sp.go ? (location.hash = sp.go) : openSource(sp);
+    $("#goin").focus({ preventScroll: true });
   }
-  function enter() {
-    if (!at) return;
-    if (at.go) { location.hash = at.go; return; }
-    const src = SOURCES[at.source], wrap = wrapping(support());
-    const f = S.flags().found || [];
-    if (!f.includes(at.id)) { S.setFlag("found", [...f, at.id]); play("ok"); }
-    card.innerHTML = `<section class="card">${sourceCard(at.source, wrap)}
-      <p class="small">${f.includes(at.id) ? "Already in your case file." : "✔ Added to your case file."} Who made it, and why? You'll judge it in the mission.</p>
-      <button class="btn ghost" id="closecard">Keep exploring</button></section>`;
-    card.querySelectorAll(".gl").forEach(b => b.onclick = () => { play("info"); glossaryPop(b); });
-    const sayb = card.querySelector(".say"); if (sayb) sayb.onclick = () => say(src[wrap.text].replace(/\*\*/g, ""));
-    const wh = card.querySelector("#wordhelp"); if (wh) wh.onclick = () => { card.querySelector(".source p").innerHTML = richText(src[wrap.text], "tap"); wh.remove(); card.querySelectorAll(".gl").forEach(b => b.onclick = () => glossaryPop(b)); };
-    $("#closecard").onclick = () => island();
-    isle.querySelector(`[data-id="${at.id}"]`).classList.add("found");
-    card.scrollIntoView({ behavior: "smooth", block: "start" });
+  function openSource(sp) {
+    const f = S.flags().found || [], wrap = wrapping(support()), src = SOURCES[sp.source];
+    if (!f.includes(sp.source)) { S.setFlag("found", [...f, sp.source]); play("ok"); }
+    host.querySelector(`.place[data-id="${sp.id}"]`).classList.add("done");
+    goBox.innerHTML = `<div>${sourceCard(sp.source, wrap)}
+      <p class="small">✔ In your case file (${(S.flags().found || []).length} of 6). Who made it, and why? You'll judge it in the mission.</p>
+      <button class="btn ghost" id="closecard">Keep exploring</button></div>`;
+    goBox.querySelectorAll(".gl").forEach(b => b.onclick = () => { play("info"); glossaryPop(b); });
+    const sayb = goBox.querySelector(".say"); if (sayb) sayb.onclick = () => say(src[wrap.text].replace(/\*\*/g, ""));
+    const wh = goBox.querySelector("#wordhelp"); if (wh) wh.onclick = () => { goBox.querySelector(".source p").innerHTML = richText(src[wrap.text], "tap"); wh.remove(); goBox.querySelectorAll(".gl").forEach(b => b.onclick = () => glossaryPop(b)); };
+    $("#closecard").onclick = () => { goBox.innerHTML = `<p class="small">Tap a place to walk there.</p>`; };
   }
-  isle.querySelectorAll(".spot").forEach(b => b.onclick = e => { e.stopPropagation(); const p = SPOTS.find(s => s.id === b.dataset.id); place(p.x, p.y + 4); });
-  const toPoint = (e, quick) => { const r = isle.getBoundingClientRect(); place((e.clientX - r.left) / r.width * 100, (e.clientY - r.top) / r.height * 100, quick); };
-  isle.addEventListener("pointerdown", e => { if (e.target.closest(".spot")) return; dragging = !!e.target.closest(".agent"); toPoint(e, dragging); if (dragging) isle.setPointerCapture(e.pointerId); });
-  isle.addEventListener("pointermove", e => { if (dragging) toPoint(e, true); });
-  isle.addEventListener("pointerup", () => { dragging = false; });
-  const step = { left: [-6, 0], right: [6, 0], up: [0, -8], down: [0, 8] };
-  app.querySelectorAll(".padb").forEach(b => b.onclick = () => place(x + step[b.dataset.d][0], y + step[b.dataset.d][1]));
-  const keys = e => {
-    if (!document.body.contains(isle)) return document.removeEventListener("keydown", keys);
-    const d = { ArrowLeft: "left", ArrowRight: "right", ArrowUp: "up", ArrowDown: "down" }[e.key];
-    if (d) { e.preventDefault(); place(x + step[d][0], y + step[d][1]); }
-    else if (e.key === "Enter" && at && document.activeElement === document.body) { e.preventDefault(); enter(); }
-  };
-  document.addEventListener("keydown", keys);
-  goin.onclick = enter;
-  place(x, y, true);
+  const here = isle.here(); if (here) arrive(here);
+  return isle;
 }
 
 /* ---------------- leaderboards ---------------- */
@@ -666,7 +643,7 @@ function me() {
 }
 
 /* ---------------- routing ---------------- */
-const ROUTES = { "": home, "/": home, "/island": island, "/mission": missionScreen, "/gym": gym, "/game": game, "/board": board, "/me": me };
+const ROUTES = { "": home, "/": home, "/island": home, "/mission": missionScreen, "/gym": gym, "/game": game, "/board": board, "/me": me };
 // Text size and colour theme from the profile. Light is the default; "auto" removes the attribute so the phone's setting decides.
 function applyText() {
   const p = S.profile(), root = document.documentElement;
