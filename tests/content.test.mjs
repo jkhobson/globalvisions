@@ -91,8 +91,15 @@ test("school-mode questions carry no answer key, and match the full content", as
     assert.deepEqual(it.options.map(o => o.t), publicOrder(full).map(o => o.t));
     assert.deepEqual(it.options.map(o => o.t), [...it.options.map(o => o.t)].sort((a, b) => a.localeCompare(b, "en")), "alphabetical order");
   }
-  for (const c of P.TRUST_CARDS) assert.deepEqual(Object.keys(c), ["t"]);
+  for (const c of P.TRUST_CARDS) assert.deepEqual(Object.keys(c), ["t", "d"]);
   // the right option isn't usually first in the public list (alphabetical order hides it)
   const firstRight = ITEMS.filter(it => publicOrder(it)[0].k === 0).length;
   assert.ok(firstRight < ITEMS.length / 2, `right option first in ${firstRight} of ${ITEMS.length}`);
+});
+
+test("Trust or Bust cards show the claim first and the deciding detail after it", () => {
+  for (const c of TRUST_CARDS) {
+    assert.ok(/^'.+'$/.test(c.t), `the claim is a quote: ${c.t}`);
+    assert.ok(typeof c.d === "string" && c.d.length > 5, `a detail after the claim: ${c.t}`);
+  }
 });

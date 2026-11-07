@@ -199,4 +199,80 @@ a.island { border-color: var(--good); }
 .padb:active { background: var(--press); }
 .walkbar .enter { flex: 1; min-width: 0; margin: 0; }
 @keyframes walk { from { transform: translateY(0) rotate(-6deg); } to { transform: translateY(-5px) rotate(6deg); } }
-@media (prefers-reduced-motion: reduce) { .agent { transition: none; } .agent.walking .bob { animation: none; } }
+
+/* ---------------- the island: 3D ground and the walking agent ---------------- */
+.hero .btn.ghost.light { background: transparent; color: #fff; border: 2px solid rgb(255 255 255 / .7); box-shadow: none; }
+.world { position: relative; height: min(60vh, 440px); margin: 6px 0 10px; border-radius: 20px; overflow: hidden; perspective: 900px; perspective-origin: 50% 50%;
+  background: linear-gradient(to bottom, #9fd8f5 0%, #cdeefa 10%, #4fb3d9 11%, #2a8fbf 100%); border: 2px solid var(--line); touch-action: manipulation; cursor: pointer; user-select: none; }
+:root[data-theme=dark] .world { background: linear-gradient(to bottom, #1d3550 0%, #2b4a6b 10%, #17557a 11%, #0f3f5c 100%); }
+.ground { position: absolute; left: 0; right: 0; top: -35%; bottom: -35%; transform: rotateX(52deg); transform-origin: 50% 50%; pointer-events: none; }
+.ground span { position: absolute; border-radius: 50%; }
+.ground .beach { inset: 2% 3%; background: #e9d49a; box-shadow: 0 0 0 10px rgb(255 255 255 / .35); }
+.ground .grass { inset: 7% 8%; background: radial-gradient(circle at 30% 30%, #8fd67f 0 25%, transparent 26%), radial-gradient(circle at 70% 70%, #7cc96e 0 22%, transparent 23%), #6dbb6a; }
+.ground .path { inset: 30% 30%; border: 10px dashed rgb(240 225 180 / .9); }
+.layer { position: absolute; inset: 0; pointer-events: none; }
+.layer > * { position: absolute; left: 0; top: 0; pointer-events: auto; will-change: transform; }
+.place { display: grid; justify-items: center; gap: 2px; border: 0; background: none; padding: 0; cursor: pointer; transform-origin: 50% 100%; }
+.place .pi { font-size: 2.3rem; line-height: 1; filter: drop-shadow(0 6px 3px rgb(0 0 0 / .3)); transition: transform .2s; }
+.place small { color: #1d2a1d; font-weight: 700; font-size: .7rem; line-height: 1.1; background: rgb(255 255 255 / .9); border-radius: 6px; padding: 1px 6px; white-space: nowrap; }
+.place.here .pi { transform: translateY(-6px) scale(1.15); }
+.place.here small { background: var(--accent); color: #1e1400; }
+.place.done small::before { content: "✔ "; color: var(--good); }
+.place.next .pi { animation: beckon 1.2s ease-in-out infinite; }
+@keyframes beckon { 50% { transform: translateY(-8px); } }
+
+.agent3d { width: 64px; height: 64px; transform-origin: 50% 100%; pointer-events: none !important; }
+.a-shadow { position: absolute; left: 12px; right: 12px; bottom: -4px; height: 10px; border-radius: 50%; background: rgb(0 0 0 / .25); }
+.a-body { position: absolute; inset: 0; transform: rotateY(calc((1 - var(--face, 1)) * 90deg)); transition: transform .3s ease; transform-style: preserve-3d; }
+.a-whole { position: absolute; left: 50%; bottom: 0; translate: -50% 0; font-size: 50px; line-height: 1; transform-origin: 50% 100%; filter: drop-shadow(0 2px 0 rgb(0 0 0 / .12)); }
+
+/* four-legged cuties (fox, panda, tiger): big head in front, a round body, stubby legs and a tail */
+.k-trot .a-head { position: absolute; left: 0; top: 2px; font-size: 40px; line-height: 1; z-index: 4; }
+.q-torso { position: absolute; left: 18px; top: 26px; width: 38px; height: 24px; border-radius: 14px 16px 12px 12px; background: var(--fur); box-shadow: inset -5px -4px 0 rgb(0 0 0 / .1); z-index: 2; }
+.panda .q-torso { background: linear-gradient(90deg, #f4f4f4 0 18%, #222 18% 40%, #f4f4f4 40%); }
+.panda .q-tail { left: 53px; top: 28px; width: 9px; height: 9px; border-radius: 50%; background: #f4f4f4; box-shadow: inset -1px -1px 0 rgb(0 0 0 / .15); transform: none; animation: none !important; }
+.stripes .q-torso { background: repeating-linear-gradient(100deg, var(--fur) 0 6px, #2a2a2a 6px 8px); }
+.q-leg { position: absolute; top: 44px; width: 9px; height: 14px; border-radius: 4px 4px 5px 5px; background: var(--leg); transform-origin: 50% 2px; }
+.q-leg::after { content: ""; position: absolute; bottom: -2px; left: -1px; width: 11px; height: 6px; border-radius: 5px; background: var(--leg); filter: brightness(.8); }
+.q-leg.f1 { left: 22px; z-index: 3; } .q-leg.f2 { left: 28px; z-index: 1; } .q-leg.b1 { left: 44px; z-index: 3; } .q-leg.b2 { left: 49px; z-index: 1; }
+.q-tail { position: absolute; left: 50px; top: 14px; width: 14px; height: 24px; border-radius: 50% 50% 40% 40%; background: linear-gradient(to top, var(--tail) 60%, var(--tip) 60%); transform-origin: 30% 100%; transform: rotate(35deg); z-index: 1; }
+.k-trot.walking .q-leg.f1, .k-trot.walking .q-leg.b2 { animation: a-swing .28s ease-in-out infinite alternate; }
+.k-trot.walking .q-leg.f2, .k-trot.walking .q-leg.b1 { animation: a-swing .28s ease-in-out infinite alternate-reverse; }
+.k-trot.walking .a-body { animation: a-bob .28s ease-in-out infinite alternate; }
+.k-trot .q-tail { animation: wag 1.4s ease-in-out infinite alternate; }
+.k-trot.walking .q-tail { animation-duration: .3s; }
+.k-trot.away .a-head { filter: brightness(.8); }
+
+/* whole animals, each with its own way of moving */
+.agent3d .a-whole { animation: breathe 2.4s ease-in-out infinite; }
+.k-plod.walking .a-whole { animation: plod .7s ease-in-out infinite alternate; }
+.k-hop.walking .a-whole { animation: hop .4s ease-in-out infinite; }
+.k-swim .a-whole { bottom: 8px; }
+/* sea animals swim through a little patch of water that travels with them */
+.k-swim .a-shadow { left: 2px; right: 2px; bottom: -6px; height: 18px; background: radial-gradient(ellipse at center, #7fd3f7 0 45%, #3aa6dc 46% 62%, rgb(58 166 220 / 0) 64%); animation: ripple 1.2s ease-in-out infinite alternate; }
+@keyframes ripple { from { scale: 1 1; } to { scale: 1.12 .9; } }
+.k-swim.walking .a-whole { animation: swim .7s ease-in-out infinite alternate; }
+.k-flutter .a-whole { bottom: 16px; animation: float 1.6s ease-in-out infinite alternate; }
+.k-flutter .a-whole, .k-flutter.walking .a-whole { animation: float 1.6s ease-in-out infinite alternate, flap .18s linear infinite alternate; }
+.k-squish.walking .a-whole { animation: squish .45s ease-in-out infinite alternate; }
+.k-scurry.walking .a-whole { animation: hop .2s ease-in-out infinite; }
+.k-wiggle.walking .a-whole { animation: wiggle .22s ease-in-out infinite alternate; }
+
+@keyframes a-swing { from { transform: rotate(32deg); } to { transform: rotate(-32deg); } }
+@keyframes a-bob { from { translate: 0 0; } to { translate: 0 -3px; } }
+@keyframes wag { from { transform: rotate(20deg); } to { transform: rotate(50deg); } }
+@keyframes breathe { 50% { scale: 1.03 0.97; } }
+@keyframes plod { from { rotate: -5deg; translate: -50% 0; } to { rotate: 5deg; translate: -50% -2px; } }
+@keyframes hop { 0%, 100% { translate: -50% 0; scale: 1.05 .92; } 50% { translate: -50% -14px; scale: .95 1.05; } }
+@keyframes swim { from { rotate: -14deg; translate: -50% 0; } to { rotate: 10deg; translate: -50% -10px; } }
+@keyframes float { from { translate: -50% 0; } to { translate: -50% -10px; } }
+@keyframes flap { from { scale: 1 1; } to { scale: .55 1; } }
+@keyframes squish { from { scale: 1.15 .82; rotate: -4deg; } to { scale: .9 1.12; rotate: 4deg; } }
+@keyframes wiggle { from { rotate: -12deg; } to { rotate: 12deg; } }
+.isle-go { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; min-height: 52px; }
+.isle-go p { margin: 0; flex: 1 1 160px; }
+@media (prefers-reduced-motion: reduce) { .agent3d *, .place.next .pi { animation: none !important; } .a-body { transition: none; } }
+
+.gcard .gd { margin: 8px 0 14px; font-size: 1rem; font-weight: 600; color: #dbe6f5; }
+.gcard .gd::before { content: "🔎 "; }
+.source .byline { margin: 8px 0 0; padding-top: 6px; border-top: 1px dashed var(--line); font-size: .9rem; color: var(--muted); font-weight: 600; }

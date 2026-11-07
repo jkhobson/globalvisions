@@ -12,6 +12,7 @@ import { weeklyStreak, weekKey, gameXP } from "./kit/rewards.js";
 import { play, soundUser, soundOn, setSound, say, canSpeak } from "./kit/sound.js";
 import * as Cel from "./kit/celebrate.js";
 import * as FX from "./kit/game-fx.js";
+import { mountIsland } from "./kit/walker.js";
 
 const $ = s => document.querySelector(s);
 const app = $("#app");
@@ -172,6 +173,9 @@ function home() {
       <p class="small">Tip: add this app to your home screen. iPhone: Share → Add to Home Screen. Android: menu ⋮ → Add to Home screen.</p>
       <button class="btn" id="introOk">Got it</button></section>`;
   page(`${intro}
+    <section class="card isle-card"><p class="kicker">🥭 Harvest Key · tap a place to walk there</p>
+      <div id="isle"></div>
+      <div class="isle-go" id="isleGo" aria-live="polite"><p class="small">Tap a place to walk there. Find the six sources for your case file.</p></div></section>
     <section class="hero card">
       <p class="kicker">Today's mission · Harvest Key</p>
       <h2>${MISSION.title}</h2>
@@ -193,6 +197,7 @@ function home() {
         ${isOpen ? `<div class="bar health" title="Island health"><i style="width:${h}%"></i></div><small>Island health ${h}%${stamp ? " · 🛂" : ""}</small>`
                  : `<small class="lock">🔒 Opens with ${w.challenge} (${w.weeks})</small>`}
       </${isOpen && w.missions ? "a" : "div"}>`; }).join("")}</div>`);
+  islandScene($("#isle"), $("#isleGo"));
   const ok = $("#introOk"); if (ok) ok.onclick = () => { S.updateProfile({ seenIntro: true }); home(); };
 }
 
@@ -201,12 +206,14 @@ function home() {
 function richText(text, mode) {
   return esc(text).replace(/\*\*(.+?)\*\*/g, (m, w) => mode === "off" ? w : `<button class="gl" data-w="${w.toLowerCase()}">${w}</button>`).replace(/\n/g, "<br>");
 }
+// Who made a source and when comes AFTER its words, so students learn to read to the end before they judge it.
 function sourceCard(id, wrap) {
   const s = SOURCES[id], text = s[wrap.text], words = [...text.matchAll(/\*\*(.+?)\*\*/g)].map(m => m[1].toLowerCase());
   return `<article class="source">
-    <header><span class="sic">${s.icon}</span><div><b>${s.kind}</b><small>By ${esc(s.author)} · ${s.year}</small></div>
+    <header><span class="sic">${s.icon}</span><div><b>${s.kind}</b></div>
       ${canSpeak ? `<button class="icon say" data-say="src" aria-label="Read aloud">🔊</button>` : ""}</header>
     <p>${richText(text, wrap.glossary)}</p>
+    <p class="byline">🔎 By ${esc(s.author)} · ${s.year}</p>
     ${wrap.glossary === "shown" && words.length ? `<dl class="wordbox">${words.map(w => `<div><dt>${w}</dt><dd>${GLOSSARY[w] || ""}</dd></div>`).join("")}</dl>` : ""}
     ${wrap.glossary === "off" && words.length ? `<button class="link" id="wordhelp">Word help</button>` : ""}
   </article>`;
@@ -484,7 +491,7 @@ function game() {
     if (!arena.isConnected) return;                 // the student left the game: stop quietly
     if (i >= cards.length) return end();
     const c = cards[i]; $("#gleft").textContent = `${i + 1}/${cards.length}`;
-    $("#gcard").innerHTML = `<p class="gt">${esc(c.t)}</p><div class="tb"><button class="btn trust" data-v="1">👍 Trust</button><button class="btn bust" data-v="0">🚫 Bust</button></div><p class="gwhy"></p>`;
+    $("#gcard").innerHTML = `<p class="gt">${esc(c.t)}</p><p class="gd">${esc(c.d || "")}</p><div class="tb"><button class="btn trust" data-v="1">👍 Trust</button><button class="btn bust" data-v="0">🚫 Bust</button></div><p class="gwhy"></p>`;
     $("#gcard").querySelectorAll("button").forEach(b => b.onclick = e => answer(+b.dataset.v === 1, e));
     if (timed) timer = setTimeout(() => answer(null), 8000);
   };
@@ -518,6 +525,56 @@ function game() {
     cards = ix.map(idx => ({ ...TRUST_CARDS[idx], idx }));
     FX.countdown(arena, () => arena.isConnected && draw());
   }).catch(() => { $("#gcard").innerHTML = offlineNote; $("#retry").onclick = game; });
+}
+
+/* ---------------- Harvest Key: walk the agent between places ---------------- */
+// The Map screen shows the island in 3D. Students tap a place and their agent walks there, then they go in.
+// The Council Hall holds the mission; the six sources can be found where they come from and go into the case file.
+// Answering questions stays a plain tap: the walking is only for getting around. Everything here is fictional.
+const SPOTS = [
+  { id: "council", icon: "🏛️", name: "Council Hall", x: 50, y: 16, go: "#/mission" },
+  { id: "src-zap", icon: "🏪", name: "ZapFizz shop", x: 17, y: 30, source: "src-zap" },
+  { id: "src-report", icon: "🏥", name: "Health Service", x: 80, y: 28, source: "src-report" },
+  { id: "src-news", icon: "🗞️", name: "Newsstand", x: 30, y: 50, source: "src-news" },
+  { id: "src-study", icon: "🔬", name: "Research lab", x: 70, y: 47, source: "src-study" },
+  { id: "src-lina", icon: "📱", name: "Phone mast", x: 82, y: 64, source: "src-lina" },
+  { id: "src-nurse", icon: "🏫", name: "School clinic", x: 52, y: 64, source: "src-nurse" },
+  { id: "gym", icon: "🏋️", name: "Think Gym", x: 18, y: 70, go: "#/gym", say: "Five quick questions at your level." },
+  { id: "market", icon: "🕵️", name: "Trust or Bust", x: 30, y: 80, go: "#/game", say: "The market game: can you trust it?" },
+  { id: "board", icon: "🏆", name: "Noticeboard", x: 70, y: 80, go: "#/board", say: "Class leaderboards (nicknames only)." }
+];
+function islandScene(host, goBox) {
+  const found = S.flags().found || [], done = missionProgress();
+  const next = MISSION.phases.find(ph => !S.history().some(h => h.text_id === `fizz-${ph.kind}`));
+  const isle = mountIsland(host, { spots: SPOTS, avatar: esc(S.profile().avatar), start: S.flags().pos || { x: 50, y: 40 },
+    onMove: p => S.setFlag("pos", { x: Math.round(p.x), y: Math.round(p.y) }), onArrive: arrive });
+  SPOTS.forEach(sp => {
+    const el = host.querySelector(`.place[data-id="${sp.id}"]`);
+    if (sp.source && found.includes(sp.source)) el.classList.add("done");
+    if (sp.id === "council") { el.classList.toggle("next", done < 1); el.classList.toggle("done", done >= 1); }
+  });
+  function arrive(sp) {
+    play("tap");
+    const text = sp.id === "council" ? (done >= 1 ? "Mission complete. Replay it?" : `The Chief is waiting. Next: ${next.title}.`)
+      : sp.source ? (found.includes(sp.source) ? "Already in your case file." : "There's a source here. Collect it for your case file.") : sp.say;
+    goBox.innerHTML = `<p><b>${esc(sp.name)}</b><br><span class="small">${esc(text)}</span></p><button class="btn" id="goin">Go in</button>`;
+    $("#goin").onclick = () => sp.go ? (location.hash = sp.go) : openSource(sp);
+    $("#goin").focus({ preventScroll: true });
+  }
+  function openSource(sp) {
+    const f = S.flags().found || [], wrap = wrapping(support()), src = SOURCES[sp.source];
+    if (!f.includes(sp.source)) { S.setFlag("found", [...f, sp.source]); play("ok"); }
+    host.querySelector(`.place[data-id="${sp.id}"]`).classList.add("done");
+    goBox.innerHTML = `<div>${sourceCard(sp.source, wrap)}
+      <p class="small">✔ In your case file (${(S.flags().found || []).length} of 6). Who made it, and why? You'll judge it in the mission.</p>
+      <button class="btn ghost" id="closecard">Keep exploring</button></div>`;
+    goBox.querySelectorAll(".gl").forEach(b => b.onclick = () => { play("info"); glossaryPop(b); });
+    const sayb = goBox.querySelector(".say"); if (sayb) sayb.onclick = () => say(src[wrap.text].replace(/\*\*/g, ""));
+    const wh = goBox.querySelector("#wordhelp"); if (wh) wh.onclick = () => { goBox.querySelector(".source p").innerHTML = richText(src[wrap.text], "tap"); wh.remove(); goBox.querySelectorAll(".gl").forEach(b => b.onclick = () => glossaryPop(b)); };
+    $("#closecard").onclick = () => { goBox.innerHTML = `<p class="small">Tap a place to walk there.</p>`; };
+  }
+  const here = isle.here(); if (here) arrive(here);
+  return isle;
 }
 
 /* ---------------- leaderboards ---------------- */
@@ -588,7 +645,7 @@ function me() {
 }
 
 /* ---------------- routing ---------------- */
-const ROUTES = { "": home, "/": home, "/mission": missionScreen, "/gym": gym, "/game": game, "/board": board, "/me": me };
+const ROUTES = { "": home, "/": home, "/island": home, "/mission": missionScreen, "/gym": gym, "/game": game, "/board": board, "/me": me };
 // Text size and colour theme from the profile. Light is the default; "auto" removes the attribute so the phone's setting decides.
 function applyText() {
   const p = S.profile(), root = document.documentElement;
