@@ -272,3 +272,7 @@ a.island { border-color: var(--good); }
 .isle-go { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; min-height: 52px; }
 .isle-go p { margin: 0; flex: 1 1 160px; }
 @media (prefers-reduced-motion: reduce) { .agent3d *, .place.next .pi { animation: none !important; } .a-body { transition: none; } }
+
+.gcard .gd { margin: 8px 0 14px; font-size: 1rem; font-weight: 600; color: #dbe6f5; }
+.gcard .gd::before { content: "🔎 "; }
+.source .byline { margin: 8px 0 0; padding-top: 6px; border-top: 1px dashed var(--line); font-size: .9rem; color: var(--muted); font-weight: 600; }

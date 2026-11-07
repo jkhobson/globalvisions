@@ -151,7 +151,7 @@ export const ITEMS = [
    "simple": "Who made this report, and why?",
    "std": "Who produced the Teen Drinks Survey, and what was its purpose?"
   },
-  "hint": "Find the author's name at the top of the card.",
+  "hint": "Read to the end of the card. Who wrote it?",
   "options": [
    {
     "t": "A drinks company, to make people buy more of its sugary drinks"
@@ -1065,93 +1065,123 @@ export const MISSION = {
 };
 export const TRUST_CARDS = [
  {
-  "t": "A government weather office chart of rainfall for the last 10 years"
+  "t": "'Our island got less rain every year for 10 years.'",
+  "d": "A chart from the government weather office"
  },
  {
-  "t": "A sweets company's website saying sweets help you study"
+  "t": "'Eating sweets helps you study!'",
+  "d": "On a website run by a sweets company"
  },
  {
-  "t": "A video titled 'SHOCKING truth they HIDE from you!!!'"
+  "t": "'The SHOCKING truth they HIDE from you!!!'",
+  "d": "A video title, with no sources given"
  },
  {
-  "t": "A 2008 article about which phone apps teenagers use"
+  "t": "'These are the phone apps teenagers use most.'",
+  "d": "An article written in 2008"
  },
  {
-  "t": "A university study of 5,000 students, with its method explained"
+  "t": "'Students who sleep more get better grades.'",
+  "d": "A university study of 5,000 students, with its method explained"
  },
  {
-  "t": "One person's post: 'This tea cured my cold in a day!'"
+  "t": "'This tea cured my cold in a day!'",
+  "d": "One person's post"
  },
  {
-  "t": "A national health ministry report on vaccination rates, 2025"
+  "t": "'Most children on the island have had their vaccinations.'",
+  "d": "A national health ministry report from 2025"
  },
  {
-  "t": "A survey of 8 people at a shoe shop about the best shoes"
+  "t": "'These are the best shoes in the country.'",
+  "d": "A survey of 8 people in one shoe shop"
  },
  {
-  "t": "An encyclopedia entry written by named experts, updated this year"
+  "t": "'The Moon is about 384,000 km from Earth.'",
+  "d": "An encyclopedia entry by named experts, updated this year"
  },
  {
-  "t": "A car company report saying its new car is the safest ever"
+  "t": "'Our new car is the safest car ever made!'",
+  "d": "A report by the company that sells the car"
  },
  {
-  "t": "A school's own record of how many students came to the library each week"
+  "t": "'About 120 students visit our library each week.'",
+  "d": "The school's own weekly library records"
  },
  {
-  "t": "A blog with no author name and no date"
+  "t": "'Everything you learned about history is wrong.'",
+  "d": "A blog with no author name and no date"
  },
  {
-  "t": "A city library's count of books borrowed each month in 2025"
+  "t": "'More books were borrowed every month in 2025.'",
+  "d": "The city library's own count of books borrowed"
  },
  {
-  "t": "A science museum page about volcanoes, written by named geologists"
+  "t": "'Volcanoes form where the Earth's plates meet.'",
+  "d": "A science museum page written by named geologists"
  },
  {
-  "t": "A national statistics office report on school attendance from last year"
+  "t": "'School attendance went up last year.'",
+  "d": "A national statistics office report"
  },
  {
-  "t": "A river study by two universities, with all of its data published"
+  "t": "'The river is getting cleaner.'",
+  "d": "A study by two universities, with all of its data published"
  },
  {
-  "t": "A hospital leaflet on handwashing, checked by doctors this year"
+  "t": "'Wash your hands for 20 seconds to stop germs.'",
+  "d": "A hospital leaflet checked by doctors this year"
  },
  {
-  "t": "A survey of 3,000 families across the country, with its questions shown"
+  "t": "'Most families eat dinner together.'",
+  "d": "A survey of 3,000 families across the country, with its questions shown"
  },
  {
-  "t": "A well-known dictionary's entry for a science word"
+  "t": "'Photosynthesis: how plants make food from sunlight.'",
+  "d": "An entry in a well-known dictionary"
  },
  {
-  "t": "A school's own weighing of its recycling bins every week for a term"
+  "t": "'Our school recycled more each week this term.'",
+  "d": "The school's own weighing of its recycling bins every week"
  },
  {
-  "t": "A weather service storm warning issued this morning"
+  "t": "'A storm will reach the coast tonight.'",
+  "d": "A warning issued this morning by the weather service"
  },
  {
-  "t": "A toy company's advert saying its game makes children smarter"
+  "t": "'This game makes children smarter!'",
+  "d": "An advert from the toy company that sells the game"
  },
  {
-  "t": "A post: 'My uncle never wore a seatbelt and was fine, so seatbelts don't matter'"
+  "t": "'Seatbelts don't matter. My uncle never wore one and was fine.'",
+  "d": "One person's post"
  },
  {
-  "t": "A 2005 guide to the best mobile phones to buy"
+  "t": "'These are the best mobile phones to buy.'",
+  "d": "A guide written in 2005"
  },
  {
-  "t": "A poll of 5 friends about the best football team in the world"
+  "t": "'This is the best football team in the world.'",
+  "d": "A poll of 5 friends"
  },
  {
-  "t": "A page with no author: 'Scientists say chocolate is a vegetable'"
+  "t": "'Scientists say chocolate is a vegetable!'",
+  "d": "A page with no author's name"
  },
  {
-  "t": "A video: 'This ONE trick will make you RICH overnight!!!'"
+  "t": "'This ONE trick will make you RICH overnight!!!'",
+  "d": "A video from an unknown channel"
  },
  {
-  "t": "A study of adult runners, used to decide how much sleep 12-year-olds need"
+  "t": "'12-year-olds only need 6 hours of sleep.'",
+  "d": "A study of adult runners"
  },
  {
-  "t": "A headline: 'Ice cream sales and sunburn both rise, so ice cream causes sunburn'"
+  "t": "'Ice cream causes sunburn!'",
+  "d": "A headline: ice cream sales and sunburn both go up in summer"
  },
  {
-  "t": "A bottled water company's report saying tap water is unsafe"
+  "t": "'Tap water is unsafe to drink.'",
+  "d": "A report from a company that sells bottled water"
  }
 ];

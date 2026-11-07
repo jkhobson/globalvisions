@@ -206,12 +206,14 @@ function home() {
 function richText(text, mode) {
   return esc(text).replace(/\*\*(.+?)\*\*/g, (m, w) => mode === "off" ? w : `<button class="gl" data-w="${w.toLowerCase()}">${w}</button>`).replace(/\n/g, "<br>");
 }
+// Who made a source and when comes AFTER its words, so students learn to read to the end before they judge it.
 function sourceCard(id, wrap) {
   const s = SOURCES[id], text = s[wrap.text], words = [...text.matchAll(/\*\*(.+?)\*\*/g)].map(m => m[1].toLowerCase());
   return `<article class="source">
-    <header><span class="sic">${s.icon}</span><div><b>${s.kind}</b><small>By ${esc(s.author)} · ${s.year}</small></div>
+    <header><span class="sic">${s.icon}</span><div><b>${s.kind}</b></div>
       ${canSpeak ? `<button class="icon say" data-say="src" aria-label="Read aloud">🔊</button>` : ""}</header>
     <p>${richText(text, wrap.glossary)}</p>
+    <p class="byline">🔎 By ${esc(s.author)} · ${s.year}</p>
     ${wrap.glossary === "shown" && words.length ? `<dl class="wordbox">${words.map(w => `<div><dt>${w}</dt><dd>${GLOSSARY[w] || ""}</dd></div>`).join("")}</dl>` : ""}
     ${wrap.glossary === "off" && words.length ? `<button class="link" id="wordhelp">Word help</button>` : ""}
   </article>`;
@@ -489,7 +491,7 @@ function game() {
     if (!arena.isConnected) return;                 // the student left the game: stop quietly
     if (i >= cards.length) return end();
     const c = cards[i]; $("#gleft").textContent = `${i + 1}/${cards.length}`;
-    $("#gcard").innerHTML = `<p class="gt">${esc(c.t)}</p><div class="tb"><button class="btn trust" data-v="1">👍 Trust</button><button class="btn bust" data-v="0">🚫 Bust</button></div><p class="gwhy"></p>`;
+    $("#gcard").innerHTML = `<p class="gt">${esc(c.t)}</p><p class="gd">${esc(c.d || "")}</p><div class="tb"><button class="btn trust" data-v="1">👍 Trust</button><button class="btn bust" data-v="0">🚫 Bust</button></div><p class="gwhy"></p>`;
     $("#gcard").querySelectorAll("button").forEach(b => b.onclick = e => answer(+b.dataset.v === 1, e));
     if (timed) timer = setTimeout(() => answer(null), 8000);
   };
