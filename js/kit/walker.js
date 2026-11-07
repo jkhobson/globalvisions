@@ -13,21 +13,24 @@ const DEPTH = 1.7;                   // the island plane is this many times tall
 
 // Each agent moves like the animal it is. Fox, panda and tiger are cute four-legged animals that trot
 // (their emoji is only a head, so they get a small furry body, paws and a tail). The others are whole-animal
-// emoji that move in their own way: the turtle plods, birds hop, sea animals swim, the butterfly flutters,
+// emoji that move in their own way (faces: -1 marks emoji drawn facing left, as in the Noto emoji font;
+// other fonts may draw some of them the other way): the turtle plods, birds hop, sea animals swim, the butterfly flutters,
 // the octopus squishes, the hedgehog scurries and the lizard wiggles.
 export const KINDS = {
   "🦊": { move: "trot", fur: "#f07a2b", leg: "#3b2a22", tail: "#f07a2b", tip: "#fff" },
-  "🐼": { move: "trot", fur: "#f4f4f4", leg: "#222", tail: "#f4f4f4", tip: "#f4f4f4" },
+  "🐼": { move: "trot", fur: "#f4f4f4", leg: "#222", tail: "#f4f4f4", tip: "#f4f4f4", panda: true },   // a tiny stub tail, not a raccoon's
   "🐯": { move: "trot", fur: "#f3a03b", leg: "#f3a03b", tail: "#f3a03b", tip: "#222", stripes: true },
-  "🐢": { move: "plod", speed: 0.6 }, "🦉": { move: "hop" }, "🦜": { move: "hop" },
-  "🐬": { move: "swim", speed: 1.2 }, "🐳": { move: "swim" }, "🦋": { move: "flutter" },
-  "🐙": { move: "squish", speed: 0.8 }, "🦔": { move: "scurry", speed: 1.3 }, "🦎": { move: "wiggle", speed: 1.2 }
+  "🐢": { move: "plod", speed: 0.6 }, "🦉": { move: "hop" }, "🦜": { move: "hop", faces: -1 },
+  "🐬": { move: "swim", speed: 1.2, faces: -1 }, "🐳": { move: "swim", faces: -1 }, "🦋": { move: "flutter" },
+  "🐙": { move: "squish", speed: 0.8 }, "🦔": { move: "scurry", speed: 1.3, faces: -1 }, "🦎": { move: "wiggle", speed: 1.2 }
 };
 export const kindOf = avatar => KINDS[avatar] || { move: "hop" };
+// The four-legged bodies are drawn head-left, so they turn the other way too.
+for (const k of Object.values(KINDS)) if (k.move === "trot") k.faces = -1;
 
 export function agentHTML(avatar) {
   const k = kindOf(avatar);
-  if (k.move === "trot") return `<span class="agent3d k-trot${k.stripes ? " stripes" : ""}" aria-hidden="true" style="--fur:${k.fur};--leg:${k.leg};--tail:${k.tail};--tip:${k.tip}">
+  if (k.move === "trot") return `<span class="agent3d k-trot${k.stripes ? " stripes" : ""}${k.panda ? " panda" : ""}" aria-hidden="true" style="--fur:${k.fur};--leg:${k.leg};--tail:${k.tail};--tip:${k.tip}">
     <span class="a-shadow"></span>
     <span class="a-body">
       <span class="q-tail"></span>
@@ -66,7 +69,7 @@ export function mountIsland(host, { spots, avatar, start = { x: 50, y: 55 }, onA
   function layout() {
     spots.forEach(s => put(els[s.id], s.x, s.y));
     put(agent, pos.x, pos.y, 0.9);
-    agent.style.setProperty("--face", facing);
+    agent.style.setProperty("--face", facing * (kind.faces || 1));   // some emoji face left, so they turn the other way
   }
   const near = () => {                                          // the closest place, if the agent is at one
     const d = s => Math.hypot(s.x - pos.x, s.y - pos.y), best = spots.reduce((a, b) => d(a) <= d(b) ? a : b);

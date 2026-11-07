@@ -229,6 +229,8 @@ a.island { border-color: var(--good); }
 /* four-legged cuties (fox, panda, tiger): big head in front, a round body, stubby legs and a tail */
 .k-trot .a-head { position: absolute; left: 0; top: 2px; font-size: 40px; line-height: 1; z-index: 4; }
 .q-torso { position: absolute; left: 18px; top: 26px; width: 38px; height: 24px; border-radius: 14px 16px 12px 12px; background: var(--fur); box-shadow: inset -5px -4px 0 rgb(0 0 0 / .1); z-index: 2; }
+.panda .q-torso { background: linear-gradient(90deg, #f4f4f4 0 18%, #222 18% 40%, #f4f4f4 40%); }
+.panda .q-tail { left: 53px; top: 28px; width: 9px; height: 9px; border-radius: 50%; background: #f4f4f4; box-shadow: inset -1px -1px 0 rgb(0 0 0 / .15); transform: none; animation: none !important; }
 .stripes .q-torso { background: repeating-linear-gradient(100deg, var(--fur) 0 6px, #2a2a2a 6px 8px); }
 .q-leg { position: absolute; top: 44px; width: 9px; height: 14px; border-radius: 4px 4px 5px 5px; background: var(--leg); transform-origin: 50% 2px; }
 .q-leg::after { content: ""; position: absolute; bottom: -2px; left: -1px; width: 11px; height: 6px; border-radius: 5px; background: var(--leg); filter: brightness(.8); }
@@ -246,6 +248,9 @@ a.island { border-color: var(--good); }
 .k-plod.walking .a-whole { animation: plod .7s ease-in-out infinite alternate; }
 .k-hop.walking .a-whole { animation: hop .4s ease-in-out infinite; }
 .k-swim .a-whole { bottom: 8px; }
+/* sea animals swim through a little patch of water that travels with them */
+.k-swim .a-shadow { left: 2px; right: 2px; bottom: -6px; height: 18px; background: radial-gradient(ellipse at center, #7fd3f7 0 45%, #3aa6dc 46% 62%, rgb(58 166 220 / 0) 64%); animation: ripple 1.2s ease-in-out infinite alternate; }
+@keyframes ripple { from { scale: 1 1; } to { scale: 1.12 .9; } }
 .k-swim.walking .a-whole { animation: swim .7s ease-in-out infinite alternate; }
 .k-flutter .a-whole { bottom: 16px; animation: float 1.6s ease-in-out infinite alternate; }
 .k-flutter .a-whole, .k-flutter.walking .a-whole { animation: float 1.6s ease-in-out infinite alternate, flap .18s linear infinite alternate; }
