@@ -19,6 +19,7 @@ import { play, soundUser, soundOn, setSound, say, canSpeak } from "./kit/sound.j
 import * as Cel from "./kit/celebrate.js";
 import * as FX from "./kit/game-fx.js";
 import { mountIsland } from "./kit/walker.js";
+import { canBuzz, buzzOn, setBuzz } from "./kit/haptics.js";
 
 const $ = s => document.querySelector(s);
 const app = $("#app");
@@ -305,14 +306,14 @@ function runItems(ids, { title, onDone, pick, slots: given } = {}) {
       picks.push(k); if (picks.length === 1) ms = t;
       const o = { t: (opts.find(x => x.k === k) || {}).t, why: r.why, trap: r.trap, b: r.b };
       if (r.right) {
-        play("ok"); btn.classList.add("right");
+        play("ok"); btn.classList.add("right", "pop");
         const barrier = simplified && tries === 1 ? "language" : undefined;
         const sup = tries === 0 || barrier ? "none" : "hint";
         if (barrier) traps = [];           // a language miss is not a thinking trap
         finish({ support: sup, barrier }, `<p class="good">✔ ${tries === 0 ? "Right first time!" : barrier ? "Right! The English was the tricky part, not your thinking." : "Right!"}</p><p>${esc(r.explain || "")}</p><p class="skilltag">${skillLine(it)}</p>`);
         return;
       }
-      play("bad"); btn.classList.add("wrong"); btn.disabled = true; tries++;
+      play("bad"); btn.classList.add("wrong", "shake"); btn.disabled = true; tries++;
       wrongs.push({ t: o.t, why: o.why });
       if (o.trap) traps.push(o.trap); if (o.b) gap = o.b;
       if (tries === 1 && wrap.simpler && !simplified) {
@@ -356,7 +357,7 @@ function runItems(ids, { title, onDone, pick, slots: given } = {}) {
     const helpAtStart = help, wrap = wrapping(support()), total = pick ? ids : ids.length;
     const shown = (DEMO ? it.parts.map((p, k) => ({ t: p.t, k })).sort((a, b) => a.t.localeCompare(b.t, "en")) : it.parts.map((p, k) => ({ t: p.t, k })));
     const text = Object.fromEntries(shown.map(p => [p.k, p.t]));
-    let chosen = [], tries = 0, busy = false, ms = 0, over = false;
+    let chosen = [], tries = 0, busy = false, ms = 0, over = false, justPlaced = null, lastWrong = "";
     const results = [], wrongs = [], shownAt = Date.now();
     function draw(fbHTML = "") {
       const left = shown.filter(p => !chosen.includes(p.k));
@@ -369,12 +370,14 @@ function runItems(ids, { title, onDone, pick, slots: given } = {}) {
             ${Array.from({ length: shown.length - chosen.length }, () => `<li class="j-empty" aria-hidden="true"></li>`).join("")}</ol>
           ${left.length ? `<p class="small">Tap the sentence that comes ${chosen.length ? "next" : "first"}. Tap a placed sentence to take it back.</p>` : ""}
           <div class="j-pool">${left.map(p => `<button class="jpart" data-k="${p.k}" ${over ? "disabled" : ""}>${esc(p.t)}</button>`).join("")}</div>
-          ${over ? "" : `<button class="btn" id="checkOrder" ${chosen.length < shown.length ? "disabled" : ""}>Check my order</button>`}
+          ${over ? "" : `<button class="btn" id="checkOrder" ${chosen.length < shown.length || chosen.join() === lastWrong ? "disabled" : ""}>Check my order</button>`}
+          ${!over && lastWrong && chosen.join() === lastWrong ? `<p class="small">Change the order before you check again.</p>` : ""}
           <div class="fb" aria-live="polite">${fbHTML}</div></div>`;
       box.querySelectorAll(".say").forEach(b => b.onclick = () => { help++; say(b.dataset.say === "src" ? SOURCES[it.source][wrap.text].replace(/\*\*/g, "") : it.stem[wrap.stem]); });
       box.querySelectorAll(".gl").forEach(b => b.onclick = () => { help++; play("info"); glossaryPop(b); });
-      box.querySelectorAll(".j-pool .jpart").forEach(b => b.onclick = () => { play("tap"); chosen.push(+b.dataset.k); draw(); });
-      box.querySelectorAll(".j-order .jpart").forEach(b => b.onclick = () => { chosen = chosen.filter(k => k !== +b.dataset.k); draw(); });
+      box.querySelectorAll(".j-pool .jpart").forEach(b => b.onclick = () => { play("click"); chosen.push(+b.dataset.k); justPlaced = +b.dataset.k; draw(); });
+      box.querySelectorAll(".j-order .jpart").forEach(b => b.onclick = () => { play("tap"); chosen = chosen.filter(k => k !== +b.dataset.k); draw(); });
+      if (justPlaced !== null) { const el = box.querySelector(`.j-order .jpart[data-k="${justPlaced}"]`); if (el) el.classList.add("snap"); justPlaced = null; }
       const c = box.querySelector("#checkOrder"); if (c) c.onclick = check;
     }
     async function check() {
@@ -387,8 +390,9 @@ function runItems(ids, { title, onDone, pick, slots: given } = {}) {
       const end = (sup, html) => { over = true; draw(); wrapUp({ item: it.id, block: it.block, demand: it.demand, first_try: sup === "none", support: sup, traps: [], gap: null, help: help - helpAtStart, picks: results, simplified: false, ms, wrongs }, html); };
       if (r.locked) return end("explained", `<p class="info">You've used your tries on this one for now. You'll meet this skill again in a new question.</p>`);
       results.push(r.right ? 0 : 1); if (results.length === 1) ms = t;
-      if (r.right) { play("ok"); return end(tries === 0 ? "none" : "hint", `<p class="good">✔ ${tries === 0 ? "Right first time!" : "Right!"}</p><p>${esc(r.explain || "")}</p><p class="skilltag">${skillLine(it)}</p>`); }
-      play("bad"); tries++;
+      if (r.right) { play("ok"); box.querySelector(".j-order").classList.add("solved"); return end(tries === 0 ? "none" : "hint", `<p class="good">✔ ${tries === 0 ? "Right first time!" : "Right!"}</p><p>${esc(r.explain || "")}</p><p class="skilltag">${skillLine(it)}</p>`); }
+      play("bad"); tries++; lastWrong = chosen.join();
+      const wrongEl = box.querySelectorAll(".j-order .jpart")[r.pos]; if (wrongEl) { wrongEl.classList.remove("shake"); void wrongEl.offsetWidth; wrongEl.classList.add("shake"); }
       const why = `<p class="bad">✘ Sentence ${r.pos + 1} isn't in the right place yet. ${esc(r.why || "")}</p>`;
       wrongs.push({ t: "Your sentence order", why: `Sentence ${r.pos + 1}: ${r.why || ""}` });
       if (tries === 1) { play("info"); draw(`${why}<p class="info">💡 Hint: ${esc(it.hint)}</p><p class="small">Move sentences by tapping them, then check again.</p>`); requestAnimationFrame(() => bring(box.querySelector(".fb").lastElementChild)); return; }
@@ -742,12 +746,16 @@ function me() {
     <p class="small">The app also adjusts this for you. More help never costs XP.</p></section>
     <h3 class="sec">Text size</h3>
     <section class="card"><div class="seg">${[["Normal", false], ["Large", true]].map(([n, v]) => `<button class="segb${!!prof.bigText === v ? " on" : ""}" data-big="${v}">${n}</button>`).join("")}</div></section>
+    <h3 class="sec">Vibration</h3>
+    <section class="card"><div class="seg">${[["On", true], ["Off", false]].map(([n, v]) => `<button class="segb${buzzOn() === v ? " on" : ""}" data-buzz="${v}">${n}</button>`).join("")}</div>
+    <p class="small">${canBuzz ? "A short buzz when you tap, get it right or get it wrong." : "This device or browser can't vibrate for web apps (iPhones and iPads can't). Everything else works the same."}</p></section>
     <h3 class="sec">Colours</h3>
     <section class="card"><div class="seg three">${[["Auto", "auto"], ["Light", "light"], ["Dark", "dark"]].map(([n, v]) => `<button class="segb${(prof.theme || "light") === v ? " on" : ""}" data-theme="${v}">${n}</button>`).join("")}</div>
     <p class="small">Light is the default. Auto follows your phone's setting.</p></section>
     ${DEMO ? `<p><a class="btn ghost" href="teacher.html">Teacher view (demo)</a></p>` : ""}
     <button class="btn ghost" id="out">${DEMO ? "Sign out and reset demo" : "Sign out"}</button>`);
   app.querySelectorAll("[data-theme]").forEach(b => b.onclick = () => { S.updateProfile({ theme: b.dataset.theme }); applyText(); me(); });
+  app.querySelectorAll("[data-buzz]").forEach(b => b.onclick = () => { setBuzz(b.dataset.buzz === "true"); play("tap"); me(); });
   app.querySelectorAll("[data-big]").forEach(b => b.onclick = () => { S.updateProfile({ bigText: b.dataset.big === "true" }); applyText(); me(); });
   app.querySelectorAll("input[name=sup]").forEach(x => x.onchange = () => { S.updateProfile({ support: +x.value, tasks: [] }); if (REMOTE) REMOTE.setSupport(+x.value).catch(() => {}); play("tap"); });
   $("#out").onclick = async () => {

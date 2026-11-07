@@ -299,3 +299,14 @@ button.island { font: inherit; text-align: left; cursor: pointer; border-color: 
 /* ---------------- Debate Dojo ---------------- */
 .tile.wide { grid-column: 1 / -1; }
 .dojo-blocks { display: grid; gap: 8px; margin: 10px 0; }
+
+/* ---------------- tap feedback: shake on wrong, pop on right, snap when a sentence is placed ---------------- */
+@keyframes shake { 0%, 100% { translate: 0 0; } 20%, 60% { translate: -6px 0; } 40%, 80% { translate: 6px 0; } }
+@keyframes pop { 0% { scale: 1; } 40% { scale: 1.05; } 100% { scale: 1; } }
+@keyframes snap { from { opacity: .3; translate: 0 14px; scale: .97; } to { opacity: 1; translate: 0 0; scale: 1; } }
+.shake { animation: shake .35s ease-in-out; }
+.pop { animation: pop .3s ease-out; }
+.jpart.snap { animation: snap .18s ease-out; }
+.j-order.solved .jpart { border-color: var(--good); background: var(--good-bg); animation: pop .3s ease-out; }
+.jpart.shake { border-color: var(--bad); }
+@media (prefers-reduced-motion: reduce) { .shake, .pop, .jpart.snap, .j-order.solved .jpart { animation: none; } }
