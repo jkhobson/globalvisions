@@ -8,7 +8,7 @@
 // context when the map goes away. If anything fails (old browser, no WebGL, file blocked), the CSS agent stays.
 //
 // mountAgent3D(agentEl, { model, onStats }) -> Promise<{ destroy() } | null>
-//   model: URL of a .glb with nodes Body (with child Head) and LegFL, LegFR, LegBL, LegBR, facing +X.
+//   model: URL of a .glb (or its bytes as an ArrayBuffer) with nodes Body (with child Head) and LegFL, LegFR, LegBL, LegBR, facing +X.
 //   onStats: optional callback with { bytes, tris, calls, loadMs } once it is ready (for the lab page).
 const VENDOR = new URL("../../assets/vendor/three/", import.meta.url);
 
@@ -29,7 +29,8 @@ export async function mountAgent3D(el, { model, onStats = () => {} } = {}) {
     [THREE, { GLTFLoader }, buf] = await Promise.all([
       import(new URL("three.module.min.js", VENDOR).href),
       import(new URL("GLTFLoader.js", VENDOR).href),
-      fetch(model).then(r => { if (!r.ok) throw new Error(r.status); return r.arrayBuffer(); })
+      typeof model !== "string" ? model
+        : fetch(model).then(r => { if (!r.ok) throw new Error(r.status); return r.arrayBuffer(); })
     ]);
   } catch (e) { console.warn("3D agent not loaded:", e); return null; }
   if (!el.isConnected) return null;
