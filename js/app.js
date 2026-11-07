@@ -19,7 +19,7 @@ import { play, soundUser, soundOn, setSound, say, canSpeak } from "./kit/sound.j
 import * as Cel from "./kit/celebrate.js";
 import * as FX from "./kit/game-fx.js";
 import { mountIsland } from "./kit/walker.js";
-import { canBuzz, buzzOn, setBuzz, buzz } from "./kit/haptics.js";
+import { canBuzz, isIOS, buzzOn, setBuzz, buzz } from "./kit/haptics.js";
 
 const $ = s => document.querySelector(s);
 const app = $("#app");
@@ -748,7 +748,7 @@ function me() {
     <section class="card"><div class="seg">${[["Normal", false], ["Large", true]].map(([n, v]) => `<button class="segb${!!prof.bigText === v ? " on" : ""}" data-big="${v}">${n}</button>`).join("")}</div></section>
     <h3 class="sec">Vibration</h3>
     <section class="card"><div class="seg">${[["On", true], ["Off", false]].map(([n, v]) => `<button class="segb${buzzOn() === v ? " on" : ""}" data-buzz="${v}">${n}</button>`).join("")}</div>
-    <p class="small">${canBuzz ? "A short buzz when you tap, get it right or get it wrong." : "This device or browser can't vibrate for web apps (iPhones and iPads can't). Everything else works the same."}</p></section>
+    <p class="small">${isIOS ? "iPhone: a light tick when you tap (iOS 18 or later, Safari). It may not work on every iPhone, and iPads have no vibration motor." : canBuzz ? "A short buzz when you tap, get it right or get it wrong." : "This device or browser can't vibrate for web apps. Everything else works the same."}</p></section>
     <h3 class="sec">Colours</h3>
     <section class="card"><div class="seg three">${[["Auto", "auto"], ["Light", "light"], ["Dark", "dark"]].map(([n, v]) => `<button class="segb${(prof.theme || "light") === v ? " on" : ""}" data-theme="${v}">${n}</button>`).join("")}</div>
     <p class="small">Light is the default. Auto follows your phone's setting.</p></section>
