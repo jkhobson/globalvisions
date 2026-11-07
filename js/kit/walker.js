@@ -48,7 +48,7 @@ export function mountIsland(host, { spots, avatar, start = { x: 50, y: 55 }, onA
   }
   function layout() {
     spots.forEach(s => put(els[s.id], s.x, s.y));
-    put(agent, pos.x, pos.y, 0.8);
+    put(agent, pos.x, pos.y, 0.9);
     agent.style.setProperty("--face", facing);
   }
   const near = () => {                                          // the closest place, if the agent is at one
