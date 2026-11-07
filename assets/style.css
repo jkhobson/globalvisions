@@ -310,3 +310,7 @@ button.island { font: inherit; text-align: left; cursor: pointer; border-color: 
 .j-order.solved .jpart { border-color: var(--good); background: var(--good-bg); animation: pop .3s ease-out; }
 .jpart.shake { border-color: var(--bad); }
 @media (prefers-reduced-motion: reduce) { .shake, .pop, .jpart.snap, .j-order.solved .jpart { animation: none; } }
+/* The claim a rebuttal jumble answers */
+.claim { margin: 0 0 10px; padding: 12px 14px; border-left: 4px solid var(--accent, #f0a020); border-radius: 12px; background: var(--card); box-shadow: 0 1px 0 var(--line); }
+.claim .kicker { margin: 0 0 4px; }
+.claim p:last-child { margin: 0; font-size: 1.05rem; font-weight: 600; }

@@ -871,6 +871,10 @@ export const ITEMS = [
   "block": "M5",
   "demand": 0,
   "kind": "order",
+  "claim": {
+   "by": "The Opposition",
+   "t": "Ripple makes people lonely. They stare at screens instead of talking to each other."
+  },
   "stem": {
    "simple": "Put the rebuttal in order: They said, However, Because, So. Tap from first to last.",
    "std": "Put this Affirmative rebuttal in the four-step order. Tap the sentences from first to last."
@@ -896,6 +900,10 @@ export const ITEMS = [
   "block": "M5",
   "demand": 1,
   "kind": "order",
+  "claim": {
+   "by": "The Affirmative",
+   "t": "Ripple helps everyone on the island get news fast."
+  },
   "stem": {
    "simple": "Put the Opposition's rebuttal in order. Tap from first to last.",
    "std": "The Opposition answers the point 'Ripple helps everyone get news fast'. Put their rebuttal in order, from first to last."
@@ -921,6 +929,10 @@ export const ITEMS = [
   "block": "M5",
   "demand": 2,
   "kind": "order",
+  "claim": {
+   "by": "The Opposition",
+   "t": "Ripple stops people talking face to face."
+  },
   "stem": {
    "simple": "Put this rebuttal in order. Tap from first to last.",
    "std": "This rebuttal has no 'However' or 'So' to help you. Put it in order, from first to last."
@@ -938,6 +950,180 @@ export const ITEMS = [
    },
    {
     "t": "The same survey shows 87 of 120 students use Ripple to reach family they can't visit."
+   }
+  ]
+ },
+ {
+  "id": "m5-jumble-04",
+  "block": "M5",
+  "demand": 0,
+  "kind": "order",
+  "claim": {
+   "by": "The Opposition",
+   "t": "Online messages cause arguments, because you can't hear someone's tone of voice."
+  },
+  "stem": {
+   "simple": "Answer the claim. Put the rebuttal in order: They said, However, Because, So.",
+   "std": "You are the Affirmative. Put your rebuttal to this claim in the four-step order, from first to last."
+  },
+  "hint": "Which sentence repeats their claim? Then look for However, Because and So.",
+  "parts": [
+   {
+    "t": "Because Grandma Rosa could see and hear her grandson after his school play."
+   },
+   {
+    "t": "However, Ripple also has voice notes and video calls."
+   },
+   {
+    "t": "So Ripple can carry feelings, not just words."
+   },
+   {
+    "t": "They said online messages cause arguments because you can't hear tone."
+   }
+  ]
+ },
+ {
+  "id": "m5-jumble-05",
+  "block": "M5",
+  "demand": 0,
+  "kind": "order",
+  "claim": {
+   "by": "The Affirmative",
+   "t": "Ripple helps shy students speak up, because typing feels safer than talking."
+  },
+  "stem": {
+   "simple": "Answer the claim. Put the rebuttal in order: They said, However, Because, So.",
+   "std": "You are the Opposition. Put your rebuttal to this claim in the four-step order, from first to last."
+  },
+  "hint": "Which sentence repeats their claim? Then look for However, Because and So.",
+  "parts": [
+   {
+    "t": "Because class talks, debates and job interviews still happen face to face."
+   },
+   {
+    "t": "However, typing a message is not the same as speaking out loud."
+   },
+   {
+    "t": "So shy students still need practice speaking in person."
+   },
+   {
+    "t": "They said Ripple helps shy students speak up."
+   }
+  ]
+ },
+ {
+  "id": "m5-jumble-06",
+  "block": "M5",
+  "demand": 1,
+  "kind": "order",
+  "claim": {
+   "by": "The Opposition",
+   "t": "Students just waste time scrolling on Ripple."
+  },
+  "stem": {
+   "simple": "Answer the claim. Put the rebuttal in order. The signal words are different this time.",
+   "std": "You are the Affirmative. This rebuttal uses different signal words. Put it in order, from first to last."
+  },
+  "hint": "Find the sentence that repeats their claim. Which one has a number from a source?",
+  "parts": [
+   {
+    "t": "In the Youth Council survey, 87 of 120 students message family every week."
+   },
+   {
+    "t": "The Opposition argued that students only waste time scrolling on Ripple."
+   },
+   {
+    "t": "This shows Ripple keeps families connected, not just busy."
+   },
+   {
+    "t": "We disagree: most students use it for something useful."
+   }
+  ]
+ },
+ {
+  "id": "m5-jumble-07",
+  "block": "M5",
+  "demand": 1,
+  "kind": "order",
+  "claim": {
+   "by": "The Affirmative",
+   "t": "Ripple group chats make teamwork easier."
+  },
+  "stem": {
+   "simple": "Answer the claim. Put the rebuttal in order. The signal words are different this time.",
+   "std": "You are the Opposition. This rebuttal uses different signal words. Put it in order, from first to last."
+  },
+  "hint": "Find the sentence that repeats their claim. Which one gives an example?",
+  "parts": [
+   {
+    "t": "In one Youth Council chat, a member blamed the whole team with an angry message instead of asking who needed help."
+   },
+   {
+    "t": "Our opponents said Ripple group chats make teamwork easier."
+   },
+   {
+    "t": "So a group chat can cause fights unless the team agrees how to use it."
+   },
+   {
+    "t": "That is only half true."
+   }
+  ]
+ },
+ {
+  "id": "m5-jumble-08",
+  "block": "M5",
+  "demand": 2,
+  "kind": "order",
+  "claim": {
+   "by": "The Opposition",
+   "t": "False news spreads faster on Ripple than the truth."
+  },
+  "stem": {
+   "simple": "Answer the claim. Put this rebuttal in order. There are no signal words to help you.",
+   "std": "You are the Affirmative. This rebuttal has no 'However' or 'So'. Put it in order, from first to last."
+  },
+  "hint": "Their claim first. Then the sentence that disagrees, the one with the example, and the one that says why it matters.",
+  "parts": [
+   {
+    "t": "Sometimes it does, but Ripple can also stop it."
+   },
+   {
+    "t": "The app that spreads a mistake can also be where the correction arrives."
+   },
+   {
+    "t": "We heard that false news spreads faster on Ripple than the truth."
+   },
+   {
+    "t": "When the false storm post went round, the Ferry Office posted the real timetable on Ripple the same day."
+   }
+  ]
+ },
+ {
+  "id": "m5-jumble-09",
+  "block": "M5",
+  "demand": 2,
+  "kind": "order",
+  "claim": {
+   "by": "The Affirmative",
+   "t": "Ripple keeps families close, even when they live far apart."
+  },
+  "stem": {
+   "simple": "Answer the claim. Put this rebuttal in order. There are no signal words to help you.",
+   "std": "You are the Opposition. This rebuttal has no 'However' or 'So'. Put it in order, from first to last."
+  },
+  "hint": "Their claim first. Then the sentence that disagrees, the one with the example, and the one that says why it matters.",
+  "parts": [
+   {
+    "t": "A quick message cannot replace talking to the person next to you."
+   },
+   {
+    "t": "Close to faraway family, maybe, but not to the family at the same table."
+   },
+   {
+    "t": "The other team told us that Ripple keeps families close."
+   },
+   {
+    "t": "Tomas Reyes saw families at the café sitting together, all looking at their phones."
    }
   ]
  },

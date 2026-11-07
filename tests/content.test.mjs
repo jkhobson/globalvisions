@@ -22,6 +22,7 @@ test("every item is complete", () => {
       assert.ok(it.parts.length >= 3 && it.parts.length <= 6, `${it.id}: a jumble needs 3 to 6 sentences`);
       it.parts.forEach(p => assert.ok(p.t && typeof p.why === "string" && p.why.length >= 15, `${it.id}: every sentence needs text and a why for its place`));
       assert.ok(!("options" in it), `${it.id}: a jumble has parts, not options`);
+      if (it.block === "M5") assert.ok(it.claim && it.claim.by && it.claim.t, `${it.id}: a rebuttal jumble shows the claim it answers`);
       continue;
     }
     assert.ok(it.options.length >= 3, `${it.id}: options`);

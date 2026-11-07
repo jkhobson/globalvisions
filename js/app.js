@@ -364,6 +364,7 @@ function runItems(ids, { title, onDone, pick, slots: given } = {}) {
       box.innerHTML = `<p class="kicker">${title || ""} · ${answers.length + 1} of ${total}</p>
         <div class="dots">${Array.from({ length: total }, (_, k) => `<i class="${k < answers.length ? (answers[k].support === "none" ? "ok" : answers[k].support === "hint" ? "mid" : "no") : k === answers.length ? "now" : ""}"></i>`).join("")}</div>
         ${it.source ? sourceCard(it.source, wrap) : ""}
+        ${it.claim ? `<blockquote class="claim"><p class="kicker">🗣️ ${esc(it.claim.by)} said:</p><p>“${esc(it.claim.t)}”</p></blockquote>` : ""}
         <div class="q card jumble"><p class="stem">🧩 ${richText(it.stem[wrap.stem], "off")}</p>
           ${canSpeak ? `<button class="icon say" data-say="q" aria-label="Read the question aloud">🔊</button>` : ""}
           <ol class="j-order" aria-label="Your order">${chosen.map(k => `<li><button class="jpart placed" data-k="${k}" ${over ? "disabled" : ""} aria-label="Remove: ${esc(text[k])}">${esc(text[k])}</button></li>`).join("")}
