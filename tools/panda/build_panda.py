@@ -74,14 +74,14 @@ def parent(child, par):
 
 
 # ---- body: white, with the black shoulder band ----
-BODY_C = (0.0, 0.0, 0.50)
+BODY_C = (0.0, 0.0, 0.45)   # low and round, so only the bottom of each stubby leg shows
 band = lambda c: BLACK if 0.0 <= c.x <= 0.30 else WHITE
-body = blob("body", (0.52, 0.40, 0.38), BODY_C, band, segs=32, rings=16)
-tail = blob("tail", (0.06, 0.075, 0.07), (-0.53, 0, 0.62), WHITE, segs=10, rings=6)   # tiny stub
-Body = join("Body", [body, tail], (0.0, 0.0, 0.40))
+body = blob("body", (0.52, 0.40, 0.37), BODY_C, band, segs=32, rings=16)
+tail = blob("tail", (0.06, 0.075, 0.07), (-0.53, 0, 0.57), WHITE, segs=10, rings=6)   # tiny stub
+Body = join("Body", [body, tail], (0.0, 0.0, 0.35))
 
 # ---- head: big, round and wide ----
-H = Vector((0.44, 0.0, 0.96))
+H = Vector((0.44, 0.0, 0.90))
 head = blob("head", (0.40, 0.47, 0.40), H, WHITE, segs=24, rings=16)
 ears = [blob(f"ear{s}", (0.08, 0.14, 0.13), H + Vector((-0.06, 0.29 * s, 0.32)), BLACK, segs=12, rings=8,
              rot=(math.radians(20 * s), 0, 0)) for s in (1, -1)]
@@ -92,14 +92,15 @@ glints = [blob(f"glint{s}", (0.025, 0.035, 0.035), H + Vector((0.392, 0.15 * s, 
           for s in (1, -1)]
 muzzle = blob("muzzle", (0.14, 0.17, 0.11), H + Vector((0.32, 0, -0.13)), WHITE, segs=16, rings=10)
 nose = blob("nose", (0.04, 0.065, 0.035), H + Vector((0.455, 0, -0.075)), BLACK, segs=10, rings=6)
-Head = join("Head", [head, *ears, *patches, *glints, muzzle, nose], (0.36, 0.0, 0.70))
+Head = join("Head", [head, *ears, *patches, *glints, muzzle, nose], (0.36, 0.0, 0.64))
 
 # ---- four short black legs, pivots at the hips ----
 legs = []
-for nm, x, sy, r in (("LegFL", 0.27, 1, 0.14), ("LegFR", 0.27, -1, 0.14), ("LegBL", -0.27, 1, 0.155), ("LegBR", -0.27, -1, 0.155)):
-    leg = blob(nm, (r, r, 0.20), (x, 0.21 * sy, 0.20), BLACK, segs=14, rings=8)
-    paw = blob(nm + "paw", (r * 1.08, r * 1.0, 0.075), (x + 0.03, 0.21 * sy, 0.065), BLACK, segs=14, rings=6)
-    legs.append(join(nm, [leg, paw], (x, 0.21 * sy, 0.38)))
+# Each leg reaches well up inside the body, and its hip pivot is high, so it never comes loose when it swings.
+for nm, x, sy, r in (("LegFL", 0.23, 1, 0.145), ("LegFR", 0.23, -1, 0.145), ("LegBL", -0.24, 1, 0.16), ("LegBR", -0.24, -1, 0.16)):
+    leg = blob(nm, (r, r, 0.26), (x, 0.15 * sy, 0.26), BLACK, segs=14, rings=8)
+    paw = blob(nm + "paw", (r * 1.08, r * 1.0, 0.075), (x + 0.03, 0.15 * sy, 0.065), BLACK, segs=14, rings=6)
+    legs.append(join(nm, [leg, paw], (x, 0.15 * sy, 0.44)))
 
 root = bpy.data.objects.new("Panda", None)
 bpy.context.collection.objects.link(root)

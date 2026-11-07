@@ -99,12 +99,12 @@ export async function mountAgent3D(el, { model, onStats = () => {} } = {}) {
     const still = reduced();
     if (walking && !still) {
       phase += dt * 2 * Math.PI * 3.2;                   // about 3 steps a second: a short-legged trot
-      const s = Math.sin(phase), sw = 0.55;
+      const s = Math.sin(phase), sw = 0.25;          // a small swing keeps short legs tucked under the body
       if (legs[0]) legs[0].rotation.z = s * sw;          // diagonal pairs move together
       if (legs[3]) legs[3].rotation.z = s * sw;
       if (legs[1]) legs[1].rotation.z = -s * sw;
       if (legs[2]) legs[2].rotation.z = -s * sw;
-      if (body) { body.position.y = rest.bodyY + Math.abs(Math.cos(phase)) * 0.04; body.rotation.x = s * 0.06; body.scale.y = 1; }
+      if (body) { body.position.y = rest.bodyY + Math.abs(Math.cos(phase)) * 0.02; body.rotation.x = s * 0.03; body.scale.y = 1; }
       if (head) { head.rotation.z = Math.cos(phase * 2) * 0.04; head.rotation.x = s * 0.05; }
     } else {
       const k = t / 1000;
