@@ -19,7 +19,7 @@ import { play, soundUser, soundOn, setSound, say, canSpeak } from "./kit/sound.j
 import * as Cel from "./kit/celebrate.js";
 import * as FX from "./kit/game-fx.js";
 import { mountIsland } from "./kit/walker.js";
-import { canBuzz, buzzOn, setBuzz } from "./kit/haptics.js";
+import { canBuzz, buzzOn, setBuzz, buzz } from "./kit/haptics.js";
 
 const $ = s => document.querySelector(s);
 const app = $("#app");
@@ -782,5 +782,8 @@ function route() {
 }
 window.addEventListener("hashchange", route);
 document.addEventListener("click", e => { if (e.target.closest("a.btn, a.tile, a.island, button.btn")) play("tap"); });
+// A small buzz on every button, link, tab and place (Android). Runs first (capture), so a right or wrong answer's
+// own buzz, which comes after, replaces it rather than being cut short.
+document.addEventListener("click", e => { if (e.target.closest("button, a, label, [role=button], .place")) buzz("tap"); }, true);
 // Real mode checks the school account on every start; demo mode goes straight in.
 if (DEMO) route(); else schoolSignIn();
