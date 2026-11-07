@@ -50,7 +50,7 @@ export async function mountAgent3D(el, { model, onStats = () => {} } = {}) {
   scene.add(new THREE.HemisphereLight(0xffffff, 0x9ab07a, 2.4));
   const sun = new THREE.DirectionalLight(0xffffff, 1.8); sun.position.set(-1.5, 3, 2.5); scene.add(sun);
   const camera = new THREE.PerspectiveCamera(30, 1, 0.1, 20);
-  camera.position.set(0, 1.55, 3.9); camera.lookAt(0, 0.62, 0);
+  camera.position.set(0, 1.3, 3.9); camera.lookAt(0, 0.55, 0);
 
   // Cheap shading for phones: one Lambert material that uses the model's vertex colours.
   const mat = new THREE.MeshLambertMaterial({ vertexColors: true });
@@ -61,6 +61,10 @@ export async function mountAgent3D(el, { model, onStats = () => {} } = {}) {
     tris += (o.geometry.index ? o.geometry.index.count : o.geometry.attributes.position.count) / 3;
   });
   const panda = new THREE.Group(); panda.add(gltf.scene); scene.add(panda);
+  // A soft shadow under all four paws, in 3D, so the feet clearly stand on the ground from every side.
+  const shadowMat = new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.28, depthWrite: false });
+  const shadow = new THREE.Mesh(new THREE.CircleGeometry(0.5, 24), shadowMat);
+  shadow.rotation.x = -Math.PI / 2; shadow.scale.set(1.35, 0.85, 1); shadow.position.y = 0.002; panda.add(shadow);
   gltf.scene.position.x = -0.12;                         // the head sticks out in front: centre the whole animal
   const part = n => gltf.scene.getObjectByName(n);
   const body = part("Body"), head = part("Head"), legs = ["LegFL", "LegFR", "LegBL", "LegBR"].map(part);
@@ -99,7 +103,7 @@ export async function mountAgent3D(el, { model, onStats = () => {} } = {}) {
     const still = reduced();
     if (walking && !still) {
       phase += dt * 2 * Math.PI * 3.2;                   // about 3 steps a second: a short-legged trot
-      const s = Math.sin(phase), sw = 0.25;          // a small swing keeps short legs tucked under the body
+      const s = Math.sin(phase), sw = 0.22;          // a small swing keeps short legs tucked under the body
       if (legs[0]) legs[0].rotation.z = s * sw;          // diagonal pairs move together
       if (legs[3]) legs[3].rotation.z = s * sw;
       if (legs[1]) legs[1].rotation.z = -s * sw;
@@ -118,7 +122,7 @@ export async function mountAgent3D(el, { model, onStats = () => {} } = {}) {
     if (!alive) return;
     alive = false; cancelAnimationFrame(raf);
     gltf.scene.traverse(o => { if (o.isMesh) o.geometry.dispose(); });
-    mat.dispose(); renderer.dispose(); renderer.forceContextLoss();
+    mat.dispose(); shadow.geometry.dispose(); shadowMat.dispose(); renderer.dispose(); renderer.forceContextLoss();
     canvas.remove(); el.classList.remove("has3d");
   }
   fit(); renderer.render(scene, camera);

@@ -19,6 +19,11 @@ test("panda model is small, has the animated parts, and needs no textures", () =
   assert.ok(bytes < MAX_BYTES, `panda.glb is ${bytes} bytes`);
   const names = json.nodes.map(n => n.name);
   for (const p of PARTS) assert.ok(names.includes(p), `missing part ${p}`);
+  // each leg sits at its own corner under the body (a leg left at 0, 0, 0 hangs out of the belly)
+  const legs = ["LegFL", "LegFR", "LegBL", "LegBR"].map(n => json.nodes.find(x => x.name === n).translation || [0, 0, 0]);
+  const corners = new Set(legs.map(([x, , z]) => `${Math.sign(x)},${Math.sign(z)}`));
+  assert.equal(corners.size, 4, `legs at ${JSON.stringify(legs)}`);
+  for (const [, y] of legs) assert.ok(y > 0.2, "hip pivots sit up inside the body");
   const head = json.nodes.find(n => n.name === "Head"), body = json.nodes.find(n => n.name === "Body");
   assert.ok((body.children || []).includes(json.nodes.indexOf(head)), "Head should be a child of Body so it bobs with it");
   const tris = json.meshes.flatMap(m => m.primitives).reduce((s, p) => s + json.accessors[p.indices].count / 3, 0);
