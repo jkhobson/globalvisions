@@ -76,5 +76,5 @@ export function saveGame({ id, xp, answers }) {
 }
 
 // Teacher settings (demo): which islands are open, which leaderboards show. Shared by both pages in this browser.
-export const teacher = () => read(SETTINGS, { open: ["harvest"], boards: { week: true, climbers: true, island: true } });
+export const teacher = () => read(SETTINGS, { open: ["harvest", "signal"], boards: { week: true, climbers: true, island: true } });
 export const setTeacher = s => write(SETTINGS, s);

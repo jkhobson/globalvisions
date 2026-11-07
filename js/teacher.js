@@ -12,6 +12,8 @@ import { DEMO } from "./config.js";
 const esc = t => String(t).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const app = document.getElementById("app");
 const blocks = Object.keys(BLOCKS);
+// Skills that islands practise so far, shown as rank columns.
+const RANKED = ["Evaluation", "Communication", "Collaboration"].filter(s => blocks.some(b => BLOCKS[b].skill === s));
 const heat = v => `hsl(${Math.round(Math.min(1, v / 0.85) * 120)} 70% ${v >= 0.85 ? 38 : 45}%)`;
 
 // One table row from a student's saved activities (oldest first).
@@ -41,17 +43,17 @@ function render(view) {
     <h1>Teacher view <small class="small">${esc(view.heading)}</small></h1>
     ${view.top || ""}
     <p class="note">${view.note}</p>
-    <section class="card"><h3>Class: two dials and the Evaluation strand</h3>
-    <p class="small">English support and GP skill are shown separately, so "weak at Evaluation" and "needs English help" are never mixed up. Colour = mastery of each block (green = mastered). <b>Quick guesses</b> counts wrong first answers tapped in under 4 seconds: a sign of guessing, not thinking.</p>
-    ${list.length ? `<div class="scroll"><table class="heat"><thead><tr><th>Student</th><th>English help</th><th>XP this week</th><th>Evaluation rank</th>
+    <section class="card"><h3>Class: two dials and skill blocks</h3>
+    <p class="small">English support and GP skill are shown separately, so "weak at Communication" and "needs English help" are never mixed up. Colour = mastery of each block (green = mastered). <b>Quick guesses</b> counts wrong first answers tapped in under 4 seconds: a sign of guessing, not thinking.</p>
+    ${list.length ? `<div class="scroll"><table class="heat"><thead><tr><th>Student</th><th>English help</th><th>XP this week</th>${RANKED.map(s => `<th>${s} rank</th>`).join("")}
       ${blocks.map(b => `<th title="${esc(BLOCKS[b].name)} (${BLOCKS[b].objectives.join(", ")})">${b}</th>`).join("")}<th>Top trap</th><th>Quick guesses</th>${view.real ? "<th>Last active</th>" : ""}</tr></thead>
     <tbody>${list.map(r => `<tr class="${r.me ? "me" : ""}"><td>${r.me ? "★ " : ""}${esc(r.avatar)} ${esc(r.nick)}</td><td>${SUPPORT[r.support] ? SUPPORT[r.support].name : "–"}</td><td>${r.weekXP}</td>
-      <td>${rank(r.p, "Evaluation").name}</td>${blocks.map(b => `<td class="cell" style="background:${heat(r.p[b])}" title="${Math.round(r.p[b] * 100)}%">${Math.round(r.p[b] * 100)}</td>`).join("")}
+      ${RANKED.map(s => `<td>${rank(r.p, s).name}</td>`).join("")}${blocks.map(b => `<td class="cell" style="background:${heat(r.p[b])}" title="${Math.round(r.p[b] * 100)}%">${Math.round(r.p[b] * 100)}</td>`).join("")}
       <td>${r.traps[0] && TRAPS[r.traps[0][0]] ? esc(TRAPS[r.traps[0][0]].name) : "–"}</td><td>${r.quick ? `<b>${r.quick}</b>` : "0"}</td>${view.real ? `<td>${ago(r.last)}</td>` : ""}</tr>`).join("")}</tbody></table></div>`
       : `<p>Nobody has joined this class yet. Give students the class code.</p>`}
     <p class="small">Blocks: ${blocks.map(b => `<b>${b}</b> ${esc(BLOCKS[b].name)} (${BLOCKS[b].objectives.join(", ")})`).join(" · ")}</p></section>
 
-    <section class="card"><h3>Islands open for students</h3><p class="small">Open an island when the challenge starts in class. Only Harvest Key has a mission in this prototype.</p>
+    <section class="card"><h3>Islands open for students</h3><p class="small">Open an island when the challenge starts in class. Harvest Key (C2) and Signal Point (C3) have missions so far.</p>
       <div class="toggles">${WORLDS.map(w => `<label><input type="checkbox" data-w="${w.id}" ${t.open.includes(w.id) ? "checked" : ""}> ${w.icon} ${w.island} <small>(${w.challenge})</small></label>`).join("")}</div></section>
     <section class="card"><h3>Leaderboards</h3>
       <div class="toggles">${[["week", "This week's XP"], ["climbers", "Skill climbers (growth)"], ["island", "Class island goal"]].map(([k, n]) => `<label><input type="checkbox" data-b="${k}" ${t.boards[k] ? "checked" : ""}> ${n}</label>`).join("")}</div>

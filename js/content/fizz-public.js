@@ -962,6 +962,7 @@ export const MISSION = {
  "id": "fizz",
  "world": "harvest",
  "title": "The Fizz Files",
+ "from": "📻 Message from the Chief",
  "brief": {
   "simple": "Agent, the island of Harvest Key needs you. Many students drink sugary drinks at school. The council wants to know: should school shops stop selling them? Collect sources. Find out which ones you can trust.",
   "std": "Agent, Harvest Key's council is deciding whether school shops should stop selling sugary drinks. Everyone has an opinion, and the sources disagree. Your job: build a research question, check every source in the dossier, and decide which evidence the council can trust."
@@ -983,6 +984,12 @@ export const MISSION = {
    "kind": "dossier",
    "title": "Field Dossier",
    "skill": "Evaluation",
+   "icon": "🗂️",
+   "go": "Open the dossier",
+   "intro": {
+    "simple": "Six sources. Some you can trust. Some you can't. Check each one.",
+    "std": "Six sources have arrived. Some are unreliable on purpose. Check who made each one, when, and why."
+   },
    "items": [
     [
      "e1-zap-01",
@@ -1020,6 +1027,12 @@ export const MISSION = {
    "kind": "board",
    "title": "Evidence Board",
    "skill": "Evaluation",
+   "icon": "📌",
+   "go": "Go to the board",
+   "intro": {
+    "simple": "Now compare the sources and the arguments.",
+    "std": "Time to weigh the evidence and judge the arguments people are making to the council."
+   },
    "items": [
     [
      "e4-compare-01",
@@ -1046,6 +1059,7 @@ export const MISSION = {
  ],
  "debrief": {
   "block": "F2",
+  "intro": "Think about your mission. There are no wrong answers here: say what you think and why.",
   "prompts": [
    {
     "q": "Before this mission, what did you think about sugary drinks at school?",
@@ -1061,7 +1075,94 @@ export const MISSION = {
    }
   ]
  },
- "bringItHome": "Bring it home: look at a drink sold near your school or home. Who made it? What does the label or advert want you to believe? Tell your teacher what you found."
+ "done": "The council now knows which sources to trust.",
+ "stamp": "Harvest Key is recovering · new passport stamp",
+ "bringItHome": "Bring it home: look at a drink sold near your school or home. Who made it? What does the label or advert want you to believe? Tell your teacher what you found.",
+ "places": [
+  {
+   "id": "council",
+   "icon": "🏛️",
+   "name": "Council Hall",
+   "x": 50,
+   "y": 16,
+   "mission": true
+  },
+  {
+   "id": "src-zap",
+   "icon": "🏪",
+   "name": "ZapFizz shop",
+   "x": 17,
+   "y": 30,
+   "source": "src-zap"
+  },
+  {
+   "id": "src-report",
+   "icon": "🏥",
+   "name": "Health Service",
+   "x": 80,
+   "y": 28,
+   "source": "src-report"
+  },
+  {
+   "id": "src-news",
+   "icon": "🗞️",
+   "name": "Newsstand",
+   "x": 30,
+   "y": 50,
+   "source": "src-news"
+  },
+  {
+   "id": "src-study",
+   "icon": "🔬",
+   "name": "Research lab",
+   "x": 70,
+   "y": 47,
+   "source": "src-study"
+  },
+  {
+   "id": "src-lina",
+   "icon": "📱",
+   "name": "Phone mast",
+   "x": 82,
+   "y": 64,
+   "source": "src-lina"
+  },
+  {
+   "id": "src-nurse",
+   "icon": "🏫",
+   "name": "School clinic",
+   "x": 52,
+   "y": 64,
+   "source": "src-nurse"
+  },
+  {
+   "id": "gym",
+   "icon": "🏋️",
+   "name": "Think Gym",
+   "x": 18,
+   "y": 70,
+   "go": "#/gym",
+   "say": "Five quick questions at your level."
+  },
+  {
+   "id": "market",
+   "icon": "🕵️",
+   "name": "Trust or Bust",
+   "x": 30,
+   "y": 80,
+   "go": "#/game",
+   "say": "The market game: can you trust it?"
+  },
+  {
+   "id": "board",
+   "icon": "🏆",
+   "name": "Noticeboard",
+   "x": 70,
+   "y": 80,
+   "go": "#/board",
+   "say": "Class leaderboards (nicknames only)."
+  }
+ ]
 };
 export const TRUST_CARDS = [
  {

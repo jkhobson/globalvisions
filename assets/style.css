@@ -276,3 +276,26 @@ a.island { border-color: var(--good); }
 .gcard .gd { margin: 8px 0 14px; font-size: 1rem; font-weight: 600; color: #dbe6f5; }
 .gcard .gd::before { content: "🔎 "; }
 .source .byline { margin: 8px 0 0; padding-top: 6px; border-top: 1px dashed var(--line); font-size: .9rem; color: var(--muted); font-weight: 600; }
+
+/* ---------------- archipelago: open islands are buttons ---------------- */
+button.island { font: inherit; text-align: left; cursor: pointer; border-color: var(--good); }
+.island.here { box-shadow: 0 0 0 3px var(--brand); }
+
+/* ---------------- Signal Point: a rockier, cooler island ---------------- */
+.isle-signal .ground .beach { background: #d9d2c0; }
+.isle-signal .ground .grass { background: radial-gradient(circle at 30% 30%, #9cc8a0 0 25%, transparent 26%), radial-gradient(circle at 70% 70%, #86b98d 0 22%, transparent 23%), #79a983; }
+
+/* ---------------- sentence jumble ---------------- */
+.jumble .j-order { list-style: none; counter-reset: j; margin: 10px 0; padding: 0; display: grid; gap: 6px; }
+.jumble .j-order li { counter-increment: j; display: flex; gap: 8px; align-items: stretch; }
+.jumble .j-order li::before { content: counter(j); flex: 0 0 28px; display: grid; place-items: center; border-radius: 50%; height: 28px; margin-top: 8px; background: var(--line); font-weight: 700; color: var(--ink); }
+.jumble .j-empty { min-height: 44px; }
+.jumble .j-empty::after { content: ""; flex: 1; border: 2px dashed var(--press); border-radius: 12px; }
+.jumble .j-pool { display: grid; gap: 8px; margin: 8px 0 12px; }
+.jpart { font: inherit; text-align: left; width: 100%; min-height: 44px; padding: 10px 12px; border-radius: 12px; border: 2px solid var(--press); background: var(--card); color: var(--ink); cursor: pointer; line-height: 1.35; }
+.jpart.placed { border-color: var(--brand); background: var(--sea); }
+.jpart:disabled { cursor: default; opacity: .9; }
+
+/* ---------------- Debate Dojo ---------------- */
+.tile.wide { grid-column: 1 / -1; }
+.dojo-blocks { display: grid; gap: 8px; margin: 10px 0; }

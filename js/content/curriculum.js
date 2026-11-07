@@ -33,7 +33,17 @@ export const BLOCKS = {
   E3: { skill: "Evaluation", name: "Spot bias and emotive language", needs: ["E1"], objectives: ["78E.01"] },
   E4: { skill: "Evaluation", name: "Judge how strong the evidence is", needs: ["E2"], objectives: ["78E.01"] },
   E5: { skill: "Evaluation", name: "Judge an argument: claim, reason, evidence", needs: ["E3", "E4"], objectives: ["78E.02"] },
-  F2: { skill: "Reflection", name: "Explain how my view changed, and why", needs: [], objectives: ["78Rf.03"] }
+  F2: { skill: "Reflection", name: "Explain how my view changed, and why", needs: [], objectives: ["78Rf.03"] },
+  // Signal Point (Challenge 3, Improving communication): from the C3 lessons on audience, barriers, listening, PEEL and rebuttals.
+  M1: { skill: "Communication", name: "Fit a message to its audience, purpose and mode", needs: [], objectives: ["78Cm.01"] },
+  M2: { skill: "Communication", name: "Spot the barrier that blocks a message", needs: ["M1"], objectives: ["78Cm.01"] },
+  M3: { skill: "Communication", name: "Listen, paraphrase and disagree respectfully", needs: [], objectives: ["78Cm.02"] },
+  M4: { skill: "Communication", name: "Build a point with PEEL and a named source", needs: ["M1"], objectives: ["78Cm.01"] },
+  M5: { skill: "Communication", name: "Rebut: they said, however, because, so", needs: ["M3", "M4"], objectives: ["78Cm.02"] },
+  M6: { skill: "Communication", name: "Open and close a debate speech", needs: ["M4"], objectives: ["78Cm.01"] },
+  T1: { skill: "Collaboration", name: "Share roles and tasks fairly", needs: [], objectives: ["78Cl.02"] },
+  T2: { skill: "Collaboration", name: "Keep the team working together", needs: [], objectives: ["78Cl.01"] },
+  F3: { skill: "Reflection", name: "Weigh the benefits and challenges of teamwork", needs: [], objectives: ["78Rf.02"] }
 };
 
 // Thinking traps: tagged on wrong options so the app (and the teacher) can see which traps catch each student.
@@ -49,6 +59,12 @@ export const TRAPS = {
   "claim-no-evidence": { name: "Claim with no evidence", tip: "A strong argument needs a reason and evidence." },
   "correlation-cause": { name: "Link means cause", tip: "Two things together does not prove one caused the other." },
   "vague-question": { name: "Vague question", tip: "A good research question is focused: not too broad and not too narrow." },
+  "wrong-audience": { name: "Wrong audience", tip: "Ask: who will read this? Change the words, tone and mode to suit them." },
+  "attack-person": { name: "Attacked the person", tip: "Challenge the idea, not the person." },
+  "not-listening": { name: "Didn't really listen", tip: "Paraphrase first: 'So you think that…'. Keep the speaker's meaning." },
+  "shut-down": { name: "Shut the talk down", tip: "Disagree with a reason, so the conversation keeps going." },
+  "off-topic": { name: "Off the point", tip: "Answer what was said, and link back to the motion." },
+  "unfair-roles": { name: "Unfair share", tip: "Share jobs by skills and time, so everyone does a fair part." },
   "yes-no-question": { name: "Yes/no question", tip: "A research question should start with How, Why, What or To what extent, so it can't be answered with just yes or no." }
 };
 
