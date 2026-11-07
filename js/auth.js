@@ -81,12 +81,33 @@ export async function createClass(name) {
   return { error: "Couldn't make a unique code. Try again." };
 }
 
+/* ---------------- answer checks: the server holds the answer key ---------------- */
+// The order to show a question's options in (positions in the public list); the server decides where the right one goes.
+export async function dealOptions(item) {
+  const c = await sb(); const { data, error } = await c.rpc("deal_options", { p_item: item });
+  if (error) throw error; return data;
+}
+// One tap: { right, explain } or { right: false, why, trap, b } or { locked: true }.
+export async function checkAnswer(item, pick, ms, simplified) {
+  const c = await sb(); const { data, error } = await c.rpc("check_answer", { p_item: item, p_pick: pick, p_ms: Math.round(ms || 0), p_simplified: !!simplified });
+  if (error) throw error; return data;
+}
+export async function dealCards() {
+  const c = await sb(); const { data, error } = await c.rpc("deal_cards");
+  if (error) throw error; return data;
+}
+// One game card: { right, why }. v is null when the timer ran out.
+export async function checkCard(idx, v) {
+  const c = await sb(); const { data, error } = await c.rpc("check_card", { p_idx: idx, p_v: v });
+  if (error) throw error; return data;
+}
+
 /* ---------------- saved work ---------------- */
 // Uploads one finished activity; the server returns the XP it worked out.
 export async function saveAttempt(clientId, textId, answers) {
   const c = await sb();
   const slim = answers.map(a => a.reflection ? { item: a.item, reflection: true, text: a.text }
-    : a.game ? { item: a.item, v: a.v } : { item: a.item, picks: a.picks || [], simplified: !!a.simplified, help: a.help || 0, ms: a.ms || 0 });
+    : a.game ? { item: a.item } : { item: a.item, help: a.help || 0 });     // what was tapped is already on the server
   const { data, error } = await c.rpc("save_attempt", { p_client_id: clientId, p_text_id: textId, p_answers: slim });
   if (error) throw error;
   return data;

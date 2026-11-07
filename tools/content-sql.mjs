@@ -1,9 +1,11 @@
-// Makes supabase/content.sql from the app's content, so the server knows each question's skill step,
-// difficulty and which option is right (and can work out XP itself). Run after changing content:
+// Makes supabase/content.sql from the app's content: each question's skill step, difficulty, which option is right,
+// the reason each wrong option is wrong, and the explanation. This is the answer key: only the server holds it in school mode.
+// Run after changing content:
 //   node tools/content-sql.mjs > supabase/content.sql
-// A test checks the file is up to date. Option text is not copied: the server only needs positions.
+// A test checks the file is up to date. Options are stored in the same (alphabetical) order as js/content/fizz-public.js.
 import { BLOCKS } from "../js/content/curriculum.js";
 import { ITEMS, TRUST_CARDS } from "../js/content/fizz.js";
+import { publicOrder } from "./public-content.mjs";
 
 const q = s => `'${String(s).replace(/'/g, "''")}'`;
 export function contentSQL() {
@@ -11,10 +13,10 @@ export function contentSQL() {
     "delete from public.items; delete from public.trust_cards; delete from public.blocks;"];
   for (const [id, b] of Object.entries(BLOCKS)) out.push(`insert into public.blocks (id, needs) values (${q(id)}, array[${b.needs.map(q).join(", ")}]::text[]);`);
   for (const it of ITEMS) {
-    const opts = JSON.stringify(it.options.map(o => ({ trap: o.trap || null, b: o.b || null })));
-    out.push(`insert into public.items (id, block, demand, options) values (${q(it.id)}, ${q(it.block)}, ${it.demand}, ${q(opts)}::jsonb);`);
+    const opts = JSON.stringify(publicOrder(it).map(o => ({ right: o.k === 0, trap: o.trap || null, b: o.b || null, why: o.why || null })));
+    out.push(`insert into public.items (id, block, demand, options, explain) values (${q(it.id)}, ${q(it.block)}, ${it.demand}, ${q(opts)}::jsonb, ${q(it.explain)});`);
   }
-  TRUST_CARDS.forEach((c, i) => out.push(`insert into public.trust_cards (idx, ok, trap) values (${i}, ${c.ok}, ${c.trap ? q(c.trap) : "null"});`));
+  TRUST_CARDS.forEach((c, i) => out.push(`insert into public.trust_cards (idx, ok, trap, why) values (${i}, ${c.ok}, ${c.trap ? q(c.trap) : "null"}, ${q(c.why)});`));
   out.push("commit;");
   return out.join("\n") + "\n";
 }

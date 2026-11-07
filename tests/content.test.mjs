@@ -76,3 +76,23 @@ test("supabase/content.sql is up to date with the content", async () => {
   assert.equal(readFileSync(new URL("../supabase/content.sql", import.meta.url), "utf8"), contentSQL(),
     "Run: node tools/content-sql.mjs > supabase/content.sql");
 });
+
+test("school-mode questions carry no answer key, and match the full content", async () => {
+  const { readFileSync } = await import("node:fs");
+  const { publicJS, publicOrder } = await import("../tools/public-content.mjs");
+  assert.equal(readFileSync(new URL("../js/content/fizz-public.js", import.meta.url), "utf8"), publicJS(),
+    "Run: node tools/public-content.mjs > js/content/fizz-public.js");
+  const P = await import("../js/content/fizz-public.js");
+  const keyWords = ["why", "trap", "explain", "ok", "b"];
+  for (const it of P.ITEMS) {
+    assert.ok(!keyWords.some(w => w in it), `${it.id} has a key field`);
+    for (const o of it.options) assert.deepEqual(Object.keys(o), ["t"], `${it.id}: options must only have text`);
+    const full = ITEMS.find(x => x.id === it.id);
+    assert.deepEqual(it.options.map(o => o.t), publicOrder(full).map(o => o.t));
+    assert.deepEqual(it.options.map(o => o.t), [...it.options.map(o => o.t)].sort((a, b) => a.localeCompare(b, "en")), "alphabetical order");
+  }
+  for (const c of P.TRUST_CARDS) assert.deepEqual(Object.keys(c), ["t"]);
+  // the right option isn't usually first in the public list (alphabetical order hides it)
+  const firstRight = ITEMS.filter(it => publicOrder(it)[0].k === 0).length;
+  assert.ok(firstRight < ITEMS.length / 2, `right option first in ${firstRight} of ${ITEMS.length}`);
+});

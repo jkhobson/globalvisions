@@ -1,10 +1,12 @@
 // Student app: screens and routing. Rules live in engine.js; content lives in js/content/.
 import { BLOCKS, OBJECTIVES, SKILLS, SKILL_ICON, SUPPORT, TRAPS } from "./content/curriculum.js";
 import { WORLDS } from "./content/worlds.js";
-import { GLOSSARY, ITEMS, MISSION, SOURCES, TRUST_CARDS } from "./content/fizz.js";
 import { applyAnswer, mastery, nextBlock, nextDemand, nextSupport, rank, ranks, trapCounts, wrapping, mastered, dealSlots, placeOptions, seenCounts, freshest, quickGuesses, QUICK_MS } from "./engine.js";
 import * as S from "./store.js";
 import { DEMO } from "./config.js";
+// Demo mode has the full content, answer key included. School mode loads the questions without the key:
+// the server says whether each tap is right, so the key never reaches a student's device.
+const { GLOSSARY, ITEMS, MISSION, SOURCES, TRUST_CARDS } = await import(DEMO ? "./content/fizz.js" : "./content/fizz-public.js");
 import { demoClass } from "./demo-class.js";
 import { weeklyStreak, weekKey, gameXP } from "./kit/rewards.js";
 import { play, soundUser, soundOn, setSound, say, canSpeak } from "./kit/sound.js";
@@ -74,6 +76,26 @@ function signIn() {
 
 /* ---------------- sign in (school accounts) ---------------- */
 let REMOTE = null;            // the server module once a student is signed in (real mode only)
+// The answer key: in this browser in demo mode, on the server in school mode. Option numbers (k) are positions in
+// the content's option list: data order in demo mode (0 = right), the public alphabetical order in school mode.
+const KEY = {
+  async order(it, slot) {
+    if (DEMO) return placeOptions(it.options.map((o, k) => ({ ...o, k })), slot);
+    return (await REMOTE.dealOptions(it.id)).map(k => ({ t: it.options[k].t, k }));
+  },
+  async check(it, k, ms, simplified) {
+    if (!DEMO) return REMOTE.checkAnswer(it.id, k, ms, simplified);
+    const o = it.options[k];
+    return k === 0 ? { right: true, explain: it.explain } : { right: false, why: o.why, trap: o.trap, b: o.b };
+  },
+  async cards() { return DEMO ? balancedCards().map(c => TRUST_CARDS.indexOf(c)) : REMOTE.dealCards(); },
+  async card(idx, v) {
+    if (!DEMO) return REMOTE.checkCard(idx, v);
+    const c = TRUST_CARDS[idx], right = v === c.ok;
+    return { right, why: c.why, trap: right ? null : c.trap };
+  }
+};
+const offlineNote = `<p class="info">No connection. Check your internet, then try again.</p><button class="btn" id="retry">Try again</button>`;
 window.addEventListener("online", () => S.flush());
 window.addEventListener("gv-sync", () => { const c = document.querySelector(".chip.xp"); if (c) c.textContent = `⭐ ${totalXP()}`; });
 // Used only when js/config.js has Supabase settings. Step 1: school Google account. Step 2: class code and nickname.
@@ -207,7 +229,7 @@ function runItems(ids, { title, onDone, pick, slots: given } = {}) {
   const box = document.createElement("div"); box.className = "runner";
   const nextId = () => pick ? pick(answers) : ids[i];
   const slots = given || dealSlots(pick ? ids : ids.length);   // where the right answer sits in each question: evenly spread
-  function show() {
+  async function show() {
     if (pick ? answers.length >= ids : i >= ids.length) return review();
     const id = nextId();
     if (!id) return review();
@@ -216,14 +238,17 @@ function runItems(ids, { title, onDone, pick, slots: given } = {}) {
     const picks = [];                       // every option tapped, by its position in the data (0 = right); the server re-checks these
     const shownAt = Date.now(); let ms = 0;  // time to the first tap, to spot quick guesses
     const total = pick ? ids : ids.length;
-    const opts = placeOptions(it.options.map((o, k) => ({ ...o, k })), slots[answers.length] ?? 0);   // same order on every redraw
+    let opts;                                // same order on every redraw
+    try { opts = await KEY.order(it, slots[answers.length] ?? 0); }
+    catch (e) { box.innerHTML = `<div class="card">${offlineNote}</div>`; box.querySelector("#retry").onclick = () => show(); return; }
+    const wrongs = [];                       // the student's wrong choices and why, for the review
     function draw() {
       box.innerHTML = `<p class="kicker">${title || ""} · ${answers.length + 1} of ${total}</p>
         <div class="dots">${Array.from({ length: total }, (_, k) => `<i class="${k < answers.length ? (answers[k].support === "none" ? "ok" : answers[k].support === "hint" ? "mid" : "no") : k === answers.length ? "now" : ""}"></i>`).join("")}</div>
         ${it.source ? sourceCard(it.source, wrap) : ""}
         <div class="q card"><p class="stem">${richText(it.stem[wrap.stem], "off")}</p>
           ${canSpeak ? `<button class="icon say" data-say="q" aria-label="Read the question aloud">🔊</button>` : ""}
-          <div class="opts">${opts.map(o => `<button class="opt" data-k="${o.k}">${esc(o.t)}</button>`).join("")}</div>
+          <div class="opts">${opts.map(o => `<button class="opt${picks.includes(o.k) ? " wrong" : ""}" data-k="${o.k}" ${picks.includes(o.k) ? "disabled" : ""}>${esc(o.t)}</button>`).join("")}</div>
           <div class="fb" aria-live="polite"></div></div>`;
       box.querySelectorAll(".gl").forEach(b => b.onclick = () => { help++; play("info"); glossaryPop(b); });
       const wh = box.querySelector("#wordhelp"); if (wh) wh.onclick = () => { help++; wrap = { ...wrap, glossary: "tap" }; draw(); };
@@ -231,18 +256,30 @@ function runItems(ids, { title, onDone, pick, slots: given } = {}) {
       box.querySelectorAll(".opt").forEach(b => b.onclick = () => choose(+b.dataset.k, b));
     }
     const settle = () => requestAnimationFrame(() => bring(box.querySelector(".fb").lastElementChild));
-    function choose(k, btn) {
-      const o = it.options[k], fb = box.querySelector(".fb");
-      picks.push(k); if (picks.length === 1) ms = Date.now() - shownAt;
-      if (k === 0) {
+    let busy = false;
+    async function choose(k, btn) {
+      if (busy) return; busy = true;
+      const fb = box.querySelector(".fb"), t = picks.length ? ms : Date.now() - shownAt;
+      let r;
+      try { r = await KEY.check(it, k, t, simplified); }
+      catch (e) { busy = false; fb.innerHTML = `<p class="info">No connection. Check your internet and choose again.</p>`; settle(); return; }
+      busy = false;
+      if (r.locked) {
+        finish({ support: "explained" }, `<p class="info">You've used your tries on this question for now. You'll meet this skill again in a new question.</p>`);
+        return;
+      }
+      picks.push(k); if (picks.length === 1) ms = t;
+      const o = { t: (opts.find(x => x.k === k) || {}).t, why: r.why, trap: r.trap, b: r.b };
+      if (r.right) {
         play("ok"); btn.classList.add("right");
         const barrier = simplified && tries === 1 ? "language" : undefined;
         const sup = tries === 0 || barrier ? "none" : "hint";
         if (barrier) traps = [];           // a language miss is not a thinking trap
-        finish({ support: sup, barrier }, `<p class="good">✔ ${tries === 0 ? "Right first time!" : barrier ? "Right! The English was the tricky part, not your thinking." : "Right!"}</p><p>${esc(it.explain)}</p><p class="skilltag">${skillLine(it)}</p>`);
+        finish({ support: sup, barrier }, `<p class="good">✔ ${tries === 0 ? "Right first time!" : barrier ? "Right! The English was the tricky part, not your thinking." : "Right!"}</p><p>${esc(r.explain || "")}</p><p class="skilltag">${skillLine(it)}</p>`);
         return;
       }
       play("bad"); btn.classList.add("wrong"); btn.disabled = true; tries++;
+      wrongs.push({ t: o.t, why: o.why });
       if (o.trap) traps.push(o.trap); if (o.b) gap = o.b;
       if (tries === 1 && wrap.simpler && !simplified) {
         simplified = true; wrap = wrapping(1);
@@ -263,7 +300,7 @@ function runItems(ids, { title, onDone, pick, slots: given } = {}) {
     }
     function finish(res, html) {
       box.querySelectorAll(".opt").forEach(b => b.disabled = true);
-      const a = { item: it.id, block: it.block, demand: it.demand, first_try: res.support === "none" && !res.barrier, ...res, traps, gap: res.support === "explained" ? gap : null, help: help - helpAtStart, picks, simplified, ms };
+      const a = { item: it.id, block: it.block, demand: it.demand, first_try: res.support === "none" && !res.barrier, ...res, traps, gap: res.support === "explained" ? gap : null, help: help - helpAtStart, picks, simplified, ms, wrongs };
       answers.push(a); i++;
       // Two quick wrong first taps in one set: a gentle nudge to read first.
       const nudge = quickGuesses(answers) === 2 && a.picks[0] !== 0 && ms < QUICK_MS
@@ -284,7 +321,7 @@ function runItems(ids, { title, onDone, pick, slots: given } = {}) {
     const wrap = wrapping(support());
     box.innerHTML = `<div class="card"><p class="kicker">Review</p><h3>Questions to learn from</h3>
       ${missed.map(a => { const it = ITEM[a.item]; return `<div class="sec"><p><b>${richText(it.stem[wrap.stem], "off")}</b></p>
-        ${(a.picks || []).filter(k => k > 0).map(k => `<p class="opt wrong">${esc(it.options[k].t)}</p><p class="bad small">✘ ${esc(it.options[k].why || "")}</p>`).join("")}
+        ${(a.wrongs || []).map(w => `<p class="opt wrong">${esc(w.t)}</p><p class="bad small">✘ ${esc(w.why || "")}</p>`).join("")}
         <p class="info">💡 ${esc(it.hint)}</p></div>`; }).join("")}
       <p class="small">We don't show the answers. These questions won't earn XP again, and a new version will test the same skill next time.</p>
       <button class="btn" id="reviewed">Continue</button></div>`;
@@ -440,8 +477,8 @@ function game() {
     <p class="small">${timed ? "Each card has 8 seconds." : "No timer at your support level."} Games give up to 30 XP a day.</p>
     <div class="arena" id="arena"><div class="ghud"><span class="hchip pts">Points <b id="gpts">0</b></span><span class="hchip combo" id="gcombo" hidden></span><span class="hchip" id="gleft"></span></div>
     <div id="gcard" class="gcard"></div></div></div>`);
-  const arena = $("#arena"), cards = balancedCards(), answers = [];
-  let i = 0, pts = 0, combo = 0, timer = null;
+  const arena = $("#arena"), answers = [];
+  let cards = [], i = 0, pts = 0, combo = 0, timer = null, busy = false;
   const draw = () => {
     clearTimeout(timer);
     if (!arena.isConnected) return;                 // the student left the game: stop quietly
@@ -451,17 +488,23 @@ function game() {
     $("#gcard").querySelectorAll("button").forEach(b => b.onclick = e => answer(+b.dataset.v === 1, e));
     if (timed) timer = setTimeout(() => answer(null), 8000);
   };
-  const answer = (v, e) => {
+  const answer = async (v, e) => {
     clearTimeout(timer);
+    if (!arena.isConnected || busy) return;
+    const c = cards[i], pt = e ? [e.clientX, e.clientY] : null;
+    busy = true; let res;
+    try { res = await KEY.card(c.idx, v); }
+    catch (err) { busy = false; $("#gcard .gwhy").textContent = "No connection. Check your internet and choose again."; return; }
+    busy = false;
     if (!arena.isConnected) return;
-    const c = cards[i], ok = v === c.ok, r = arena.getBoundingClientRect();
-    const x = e ? e.clientX - r.left : r.width / 2, y = e ? e.clientY - r.top : r.height / 2;
+    const ok = res.right, r = arena.getBoundingClientRect();
+    const x = pt ? pt[0] - r.left : r.width / 2, y = pt ? pt[1] - r.top : r.height / 2;
     if (ok) { combo++; const g = 100 + 20 * (combo - 1); pts += g; FX.flash(arena); FX.burst(arena, x, y); FX.floatText(arena, x, y, `+${g}`); }
     else { combo = 0; FX.hurt(arena); FX.floatText(arena, x, y, v === null ? "Time!" : "Oops", "bad"); }
     FX.setPoints(arena, pts); FX.setCombo(arena, combo);
-    answers.push({ item: `trust-${TRUST_CARDS.indexOf(c)}`, game: true, v, support: ok ? "none" : "explained", traps: !ok && c.trap ? [c.trap] : [] });
+    answers.push({ item: `trust-${c.idx}`, game: true, v, support: ok ? "none" : "explained", traps: !ok && res.trap ? [res.trap] : [] });
     $("#gcard").querySelectorAll("button").forEach(b => b.disabled = true);
-    $("#gcard .gwhy").innerHTML = `${c.ok ? "Trust" : "Bust"}: ${esc(c.why)}`;
+    $("#gcard .gwhy").innerHTML = `${ok ? "✔" : "✘"} ${esc(res.why)}`;
     i++; setTimeout(draw, ok ? 1300 : 2400);
   };
   const end = () => {
@@ -471,7 +514,10 @@ function game() {
     $("#again").onclick = game;
     if (xp) Cel.set(xp); else play("done");
   };
-  FX.countdown(arena, () => arena.isConnected && draw());
+  KEY.cards().then(ix => {
+    cards = ix.map(idx => ({ ...TRUST_CARDS[idx], idx }));
+    FX.countdown(arena, () => arena.isConnected && draw());
+  }).catch(() => { $("#gcard").innerHTML = offlineNote; $("#retry").onclick = game; });
 }
 
 /* ---------------- leaderboards ---------------- */

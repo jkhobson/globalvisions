@@ -70,6 +70,17 @@ These menus were correct as far as I know in November 2026. Supabase and Google 
 - The teacher page shows your real class: both dials, the heat map, top traps, quick guesses and when each student was last active.
 - The leaderboards show your class only, with nicknames.
 
-## Known limit
+## Where the answers live
 
-The app still has to load the questions to show them, and that includes which option is right. A student who knows how to read web page code could find it. They would still earn no XP for questions they have seen before, and the server checks every answer. Moving the questions fully onto the server is possible later, but it would make the app slower and stop it working offline.
+In school mode the app never has the answer key. It loads the questions from `js/content/fizz-public.js`, which lists the options in alphabetical order and has no reasons or explanations. Each tap goes to the server, which says right or wrong and gives the reason for a wrong choice. After two wrong taps a question is locked until the activity is saved, and the XP is worked out from the server's record of the taps, not from what the app reports.
+
+The full content with the answers (`js/content/fizz.js`) stays in this private repository. The publish workflow (`.github/workflows/pages.yml`) leaves it off the website in school mode.
+
+Trade-off: in school mode each tap needs an internet connection.
+
+## Publishing the app (GitHub Pages)
+
+1. GitHub Pages for a private repository needs a paid GitHub plan (GitHub Pro for a personal account). Check the current price at https://github.com/pricing.
+2. In the repository, open **Settings → Pages**. Under **Build and deployment → Source**, choose **GitHub Actions**.
+3. Open the **Actions** tab, choose **Publish the student app**, and click **Run workflow**.
+4. To publish automatically after every merge, open **Settings → Secrets and variables → Actions → Variables**, click **New repository variable**, name it `PAGES_ON` and set it to `true`.
