@@ -19,7 +19,7 @@ import { play, soundUser, soundOn, setSound, say, canSpeak } from "./kit/sound.j
 import * as Cel from "./kit/celebrate.js";
 import * as FX from "./kit/game-fx.js";
 import { mountIsland } from "./kit/walker.js";
-import { canBuzz, buzzOn, setBuzz, buzz } from "./kit/haptics.js";
+import { canBuzz, isIOS, buzzOn, setBuzz, buzz } from "./kit/haptics.js";
 
 const $ = s => document.querySelector(s);
 const app = $("#app");
@@ -748,7 +748,7 @@ function me() {
     <section class="card"><div class="seg">${[["Normal", false], ["Large", true]].map(([n, v]) => `<button class="segb${!!prof.bigText === v ? " on" : ""}" data-big="${v}">${n}</button>`).join("")}</div></section>
     <h3 class="sec">Vibration</h3>
     <section class="card"><div class="seg">${[["On", true], ["Off", false]].map(([n, v]) => `<button class="segb${buzzOn() === v ? " on" : ""}" data-buzz="${v}">${n}</button>`).join("")}</div>
-    <p class="small">${canBuzz ? "A short buzz when you tap, get it right or get it wrong." : "This device or browser can't vibrate for web apps (iPhones and iPads can't). Everything else works the same."}</p></section>
+    <p class="small">${isIOS ? "iPhone: a light tick when you tap (iOS 18 or later, Safari). It may not work on every iPhone, and iPads have no vibration motor." : canBuzz ? "A short buzz when you tap, get it right or get it wrong." : "This device or browser can't vibrate for web apps. Everything else works the same."}</p></section>
     <h3 class="sec">Colours</h3>
     <section class="card"><div class="seg three">${[["Auto", "auto"], ["Light", "light"], ["Dark", "dark"]].map(([n, v]) => `<button class="segb${(prof.theme || "light") === v ? " on" : ""}" data-theme="${v}">${n}</button>`).join("")}</div>
     <p class="small">Light is the default. Auto follows your phone's setting.</p></section>
@@ -784,6 +784,13 @@ window.addEventListener("hashchange", route);
 document.addEventListener("click", e => { if (e.target.closest("a.btn, a.tile, a.island, button.btn")) play("tap"); });
 // A small buzz on every button, link, tab and place (Android). Runs first (capture), so a right or wrong answer's
 // own buzz, which comes after, replaces it rather than being cut short.
-document.addEventListener("click", e => { if (e.target.closest("button, a, label, [role=button], .place")) buzz("tap"); }, true);
+// Buzz on buttons and links, never when tapping into a text box (on iPhone the tick could take the keyboard away).
+document.addEventListener("click", e => {
+  const t = e.target;
+  if (t.closest("input:not([type=checkbox]):not([type=radio]), textarea, select")) return;
+  const lab = t.closest("label");
+  if (lab && lab.querySelector("input:not([type=checkbox]):not([type=radio]), textarea, select")) return;
+  if (t.closest("button, a, label, [role=button], .place")) buzz("tap");
+}, true);
 // Real mode checks the school account on every start; demo mode goes straight in.
 if (DEMO) route(); else schoolSignIn();
