@@ -243,6 +243,10 @@ a.island { border-color: var(--good); }
 .k-trot.walking .q-tail { animation-duration: .3s; }
 .k-trot.away .a-head { filter: brightness(.8); }
 
+/* a real 3D agent (js/kit/agent3d.js): a small WebGL canvas takes the place of the CSS body once it has loaded */
+.agent3d.has3d .a-body { visibility: hidden; }
+.agent3d .a-3d { position: absolute; left: 50%; bottom: -10px; width: 88px; height: 88px; translate: -50% 0; pointer-events: none; }
+
 /* whole animals, each with its own way of moving */
 .agent3d .a-whole { animation: breathe 2.4s ease-in-out infinite; }
 .k-plod.walking .a-whole { animation: plod .7s ease-in-out infinite alternate; }

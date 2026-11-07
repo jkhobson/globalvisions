@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>3D Panda Lab</title>
+<link rel="icon" href="assets/icons/icon-192.png">
+<link rel="stylesheet" href="assets/style.css">
+<style>
+  .lab-stage { position: relative; height: 300px; border-radius: 20px; overflow: hidden; background: radial-gradient(ellipse at 50% 85%, #7cc46a 0 38%, transparent 39%), linear-gradient(#bfe6ff, #e9f7ff); }
+  :root[data-theme=dark] .lab-stage { background: radial-gradient(ellipse at 50% 85%, #3f7a3a 0 38%, transparent 39%), linear-gradient(#1d3550, #2b4a6b); }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme=light]) .lab-stage { background: radial-gradient(ellipse at 50% 85%, #3f7a3a 0 38%, transparent 39%), linear-gradient(#1d3550, #2b4a6b); } }
+  .lab-stage .agent3d { position: absolute; left: 50%; bottom: 22px; width: 240px; height: 240px; translate: -50% 0; }
+  .lab-stage .agent3d .a-3d { width: 260px; height: 260px; bottom: -14px; }
+  .lab-stage .a-shadow { left: 60px; right: 60px; height: 22px; bottom: 0; }
+  .stats { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; margin: 0; }
+  .stats dt { color: var(--muted); } .stats dd { margin: 0; font-weight: 700; text-align: right; font-variant-numeric: tabular-nums; }
+  .row { display: flex; flex-wrap: wrap; gap: 8px; }
+  .row .btn { flex: 1 1 30%; min-width: 0; }
+</style>
+</head>
+<body>
+<main>
+  <p class="kicker">Trial · not part of the student app yet</p>
+  <h1>3D panda lab</h1>
+  <p class="lead">A chibi panda built in Blender, saved as a small 3D file, and drawn with Three.js. Tap the buttons to see it trot and turn, then walk it around the island below.</p>
+
+  <section class="card">
+    <div class="lab-stage" id="stage"><span class="agent3d" id="big"><span class="a-shadow"></span><span class="a-body"></span></span></div>
+    <div class="row" style="margin-top:10px">
+      <button class="btn" id="walk">Trot</button>
+      <button class="btn ghost" id="turn">Turn</button>
+      <button class="btn ghost" id="spin">Spin</button>
+    </div>
+    <p class="small" id="msg">Loading the panda…</p>
+  </section>
+
+  <h3 class="sec">On the island</h3>
+  <section class="card"><div id="isle"></div><p class="small">Tap anywhere on the island and the panda walks there.</p></section>
+
+  <h3 class="sec">How heavy is it?</h3>
+  <section class="card">
+    <dl class="stats">
+      <dt>Panda model file</dt><dd id="s-bytes">…</dd>
+      <dt>Triangles</dt><dd id="s-tris">…</dd>
+      <dt>Draw calls per frame</dt><dd id="s-calls">…</dd>
+      <dt>Three.js download (gzipped)</dt><dd>about 200 KB, once</dd>
+      <dt>Time to load and show</dt><dd id="s-load">…</dd>
+      <dt>Frames per second (this device)</dt><dd id="s-fps">…</dd>
+    </dl>
+    <p class="small">The panda only loads when it is needed. If this device can't do 3D, the app keeps the flat panda.</p>
+  </section>
+</main>
+<script type="module">
+  import { mountAgent3D, MODELS, canUse3D } from "./js/kit/agent3d.js";
+  import { mountIsland } from "./js/kit/walker.js";
+  const $ = s => document.querySelector(s);
+  const kb = n => `${(n / 1024).toFixed(0)} KB`;
+
+  // 1. the big panda
+  const big = $("#big");
+  let turns = [[1, 0.4], [-1, 0.4], [0, -1], [0, 1]], ti = 0;
+  if (!canUse3D()) $("#msg").textContent = "This browser can't draw 3D, so the app would show the flat panda.";
+  mountAgent3D(big, { model: MODELS["🐼"], onStats: s => {
+    $("#s-bytes").textContent = kb(s.bytes); $("#s-tris").textContent = s.tris.toLocaleString();
+    $("#s-calls").textContent = s.calls; $("#s-load").textContent = `${s.loadMs} ms`;
+    $("#msg").textContent = "Panda ready.";
+  } }).then(r => { if (!r && canUse3D()) $("#msg").textContent = "The panda didn't load. The app would show the flat panda."; });
+  const face = ([dx, dy]) => { big.dataset.heading = `${dx},${dy}`; };
+  face(turns[0]);
+  $("#walk").onclick = () => { const on = big.classList.toggle("walking"); $("#walk").textContent = on ? "Stand" : "Trot"; };
+  // Turning eases only while walking, so trot briefly to turn when standing still.
+  const nudge = () => { if (!big.classList.contains("walking")) { big.classList.add("walking"); setTimeout(() => big.classList.remove("walking"), 600); } };
+  $("#turn").onclick = () => { ti = (ti + 1) % turns.length; face(turns[ti]); nudge(); };
+  $("#spin").onclick = () => {
+    let a = 0; const was = big.classList.contains("walking"); big.classList.add("walking");
+    const id = setInterval(() => { a += 0.35; face([Math.cos(a), -Math.sin(a)]); if (a > Math.PI * 2) { clearInterval(id); if (!was) big.classList.remove("walking"); } }, 60);
+  };
+
+  // 2. the real island walker, with the 3D panda in place of the flat one
+  const spots = [{ id: "a", icon: "🏫", name: "School", x: 22, y: 30 }, { id: "b", icon: "📰", name: "News stand", x: 76, y: 38 }, { id: "c", icon: "⛲", name: "Fountain", x: 48, y: 78 }];
+  const host = $("#isle"); host.className = "isle-harvest";
+  mountIsland(host, { spots, avatar: "🐼", start: { x: 50, y: 50 } });
+  mountAgent3D(host.querySelector(".agent3d"), { model: MODELS["🐼"] });
+
+  // 3. frames per second, measured over the last 2 seconds
+  let n = 0, t0 = performance.now();
+  (function tick(t) { n++; if (t - t0 > 2000) { $("#s-fps").textContent = Math.round(n * 1000 / (t - t0)); n = 0; t0 = t; } requestAnimationFrame(tick); })(t0);
+</script>
+</body>
+</html>
