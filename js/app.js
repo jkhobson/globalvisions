@@ -784,6 +784,13 @@ window.addEventListener("hashchange", route);
 document.addEventListener("click", e => { if (e.target.closest("a.btn, a.tile, a.island, button.btn")) play("tap"); });
 // A small buzz on every button, link, tab and place (Android). Runs first (capture), so a right or wrong answer's
 // own buzz, which comes after, replaces it rather than being cut short.
-document.addEventListener("click", e => { if (e.target.closest("button, a, label, [role=button], .place")) buzz("tap"); }, true);
+// Buzz on buttons and links, never when tapping into a text box (on iPhone the tick could take the keyboard away).
+document.addEventListener("click", e => {
+  const t = e.target;
+  if (t.closest("input:not([type=checkbox]):not([type=radio]), textarea, select")) return;
+  const lab = t.closest("label");
+  if (lab && lab.querySelector("input:not([type=checkbox]):not([type=radio]), textarea, select")) return;
+  if (t.closest("button, a, label, [role=button], .place")) buzz("tap");
+}, true);
 // Real mode checks the school account on every start; demo mode goes straight in.
 if (DEMO) route(); else schoolSignIn();

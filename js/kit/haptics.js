@@ -35,8 +35,12 @@ function iosTick() {
     input.type = "checkbox"; input.setAttribute("switch", ""); input.tabIndex = -1;
     sw.appendChild(input); document.body.appendChild(sw);
   }
+  const had = document.activeElement;
   ticking = true;
-  try { sw.click(); } finally { ticking = false; }
+  try { sw.click(); } finally {
+    ticking = false;
+    if (had && had !== document.activeElement && had.focus) had.focus({ preventScroll: true });  // never steal the keyboard
+  }
 }
 export function buzz(name) {
   if (!buzzOn() || !(name in PATTERNS) || ticking) return;
