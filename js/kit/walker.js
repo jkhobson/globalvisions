@@ -86,6 +86,7 @@ export function mountIsland(host, { spots, avatar, start = { x: 50, y: 55 }, onA
     const dx = target.x - pos.x, dy = target.y - pos.y, d = Math.hypot(dx, dy), move = SPEED * (kind.speed || 1) * dt;
     if (Math.abs(dx) > 0.5) facing = dx < 0 ? -1 : 1;
     agent.classList.toggle("away", dy < -Math.abs(dx));            // walking away from you: show the back
+    agent.dataset.heading = `${dx.toFixed(2)},${dy.toFixed(2)}`;   // which way it's going, for a 3D agent to turn to
     if (d <= move) { pos = { ...target }; layout(); stop(); return; }
     pos = { x: pos.x + dx / d * move, y: pos.y + dy / d * move };
     layout(); raf = requestAnimationFrame(step);

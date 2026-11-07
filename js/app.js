@@ -18,7 +18,8 @@ import { weeklyStreak, weekKey, gameXP } from "./kit/rewards.js";
 import { play, soundUser, soundOn, setSound, say, canSpeak } from "./kit/sound.js";
 import * as Cel from "./kit/celebrate.js";
 import * as FX from "./kit/game-fx.js";
-import { mountIsland } from "./kit/walker.js";
+import { mountIsland, kindOf } from "./kit/walker.js";
+import { mountAgent3D, MODELS as AGENT_MODELS, canUse3D } from "./kit/agent3d.js";
 import { canBuzz, isIOS, buzzOn, setBuzz, buzz } from "./kit/haptics.js";
 
 const $ = s => document.querySelector(s);
@@ -665,6 +666,10 @@ function islandScene(host, goBox, M) {
   const posKey = `pos-${M.world}`, start = S.flags()[posKey] || (M.world === "harvest" && S.flags().pos) || { x: 50, y: 40 };
   const isle = mountIsland(host, { spots: SPOTS, avatar: esc(S.profile().avatar), start,
     onMove: p => S.setFlag(posKey, { x: Math.round(p.x), y: Math.round(p.y) }), onArrive: arrive });
+  // The agent in 3D, moving its own animal way. On unless the student turns it off on Agent ID; the flat agent
+  // stays if 3D can't load.
+  const av = S.profile().avatar;
+  if (S.flags().agent3d !== false && AGENT_MODELS[av]) mountAgent3D(host.querySelector(".agent3d"), { model: AGENT_MODELS[av], move: kindOf(av).move });
   SPOTS.forEach(sp => {
     const el = host.querySelector(`.place[data-id="${sp.id}"]`);
     if (sp.source && found.includes(sp.source)) el.classList.add("done");
@@ -749,12 +754,16 @@ function me() {
     <h3 class="sec">Vibration</h3>
     <section class="card"><div class="seg">${[["On", true], ["Off", false]].map(([n, v]) => `<button class="segb${buzzOn() === v ? " on" : ""}" data-buzz="${v}">${n}</button>`).join("")}</div>
     <p class="small">${isIOS ? "iPhone: a light tick when you tap (iOS 18 or later, Safari). It may not work on every iPhone, and iPads have no vibration motor." : canBuzz ? "A short buzz when you tap, get it right or get it wrong." : "This device or browser can't vibrate for web apps. Everything else works the same."}</p></section>
+    ${AGENT_MODELS[prof.avatar] ? `<h3 class="sec">3D agent</h3>
+    <section class="card"><div class="seg">${[["On", true], ["Off", false]].map(([n, v]) => `<button class="segb${(S.flags().agent3d !== false) === v ? " on" : ""}" data-a3d="${v}">${n}</button>`).join("")}</div>
+    <p class="small">${canUse3D() ? "Show your agent in 3D on the island map. Turn it off if the map feels slow." : "This device can't show 3D, so your agent stays flat."}</p></section>` : ""}
     <h3 class="sec">Colours</h3>
     <section class="card"><div class="seg three">${[["Auto", "auto"], ["Light", "light"], ["Dark", "dark"]].map(([n, v]) => `<button class="segb${(prof.theme || "light") === v ? " on" : ""}" data-theme="${v}">${n}</button>`).join("")}</div>
     <p class="small">Light is the default. Auto follows your phone's setting.</p></section>
     ${DEMO ? `<p><a class="btn ghost" href="teacher.html">Teacher view (demo)</a></p>` : ""}
     <button class="btn ghost" id="out">${DEMO ? "Sign out and reset demo" : "Sign out"}</button>`);
   app.querySelectorAll("[data-theme]").forEach(b => b.onclick = () => { S.updateProfile({ theme: b.dataset.theme }); applyText(); me(); });
+  app.querySelectorAll("[data-a3d]").forEach(b => b.onclick = () => { S.setFlag("agent3d", b.dataset.a3d === "true"); play("tap"); me(); });
   app.querySelectorAll("[data-buzz]").forEach(b => b.onclick = () => { setBuzz(b.dataset.buzz === "true"); play("tap"); me(); });
   app.querySelectorAll("[data-big]").forEach(b => b.onclick = () => { S.updateProfile({ bigText: b.dataset.big === "true" }); applyText(); me(); });
   app.querySelectorAll("input[name=sup]").forEach(x => x.onchange = () => { S.updateProfile({ support: +x.value, tasks: [] }); if (REMOTE) REMOTE.setSupport(+x.value).catch(() => {}); play("tap"); });
