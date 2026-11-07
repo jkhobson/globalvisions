@@ -530,6 +530,7 @@ export const ITEMS = [
 
 export const MISSION = {
   id: "fizz", world: "harvest", title: "The Fizz Files",
+  from: "📻 Message from the Chief",
   brief: {
     simple: "Agent, the island of Harvest Key needs you. Many students drink sugary drinks at school. The council wants to know: should school shops stop selling them? Collect sources. Find out which ones you can trust.",
     std: "Agent, Harvest Key's council is deciding whether school shops should stop selling sugary drinks. Everyone has an opinion, and the sources disagree. Your job: build a research question, check every source in the dossier, and decide which evidence the council can trust."
@@ -537,22 +538,42 @@ export const MISSION = {
   phases: [
     // Each question slot lists several versions. A replay asks the version the student has seen least.
     { kind: "briefing", title: "Briefing", skill: "Research", items: [["r2-fizz-01", "r2-fizz-02", "r2-fizz-03"]] },
-    { kind: "dossier", title: "Field Dossier", skill: "Evaluation",
+    { kind: "dossier", title: "Field Dossier", skill: "Evaluation", icon: "🗂️", go: "Open the dossier",
+      intro: { simple: "Six sources. Some you can trust. Some you can't. Check each one.",
+               std: "Six sources have arrived. Some are unreliable on purpose. Check who made each one, when, and why." },
       items: [["e1-zap-01", "e1-zap-02", "e1-zap-03"], ["e3-lina-01", "e3-lina-02", "e3-lina-03"], ["e2-news-01", "e2-news-02", "e2-news-03"],
               ["e1-report-01", "e1-report-02", "e1-report-03"], ["e3-study-01", "e3-study-02", "e3-study-03"], ["e2-nurse-01", "e2-nurse-02", "e2-nurse-03"]] },
-    { kind: "board", title: "Evidence Board", skill: "Evaluation",
+    { kind: "board", title: "Evidence Board", skill: "Evaluation", icon: "📌", go: "Go to the board",
+      intro: { simple: "Now compare the sources and the arguments.",
+               std: "Time to weigh the evidence and judge the arguments people are making to the council." },
       items: [["e4-compare-01", "e4-compare-02", "e4-compare-03"], ["e5-arg-01", "e5-arg-04", "e5-arg-05"], ["e5-arg-02", "e5-arg-06", "e5-arg-07"]] },
     { kind: "debrief", title: "Debrief", skill: "Reflection" }
   ],
   debrief: {
     block: "F2",
+    intro: "Think about your mission. There are no wrong answers here: say what you think and why.",
     prompts: [
       { q: "Before this mission, what did you think about sugary drinks at school?", frame: "Before, I thought ___." },
       { q: "Which source changed your thinking most, and why?", frame: "The ___ changed my mind because ___." },
       { q: "Which source do you trust least? Why?", frame: "I trust the ___ least because ___." }
     ]
   },
-  bringItHome: "Bring it home: look at a drink sold near your school or home. Who made it? What does the label or advert want you to believe? Tell your teacher what you found."
+  done: "The council now knows which sources to trust.",
+  stamp: "Harvest Key is recovering · new passport stamp",
+  bringItHome: "Bring it home: look at a drink sold near your school or home. Who made it? What does the label or advert want you to believe? Tell your teacher what you found.",
+  // Places on the island map (x, y from 0 to 100; y = 0 is the far side). Sources can be collected where they come from.
+  places: [
+    { id: "council", icon: "🏛️", name: "Council Hall", x: 50, y: 16, mission: true },
+    { id: "src-zap", icon: "🏪", name: "ZapFizz shop", x: 17, y: 30, source: "src-zap" },
+    { id: "src-report", icon: "🏥", name: "Health Service", x: 80, y: 28, source: "src-report" },
+    { id: "src-news", icon: "🗞️", name: "Newsstand", x: 30, y: 50, source: "src-news" },
+    { id: "src-study", icon: "🔬", name: "Research lab", x: 70, y: 47, source: "src-study" },
+    { id: "src-lina", icon: "📱", name: "Phone mast", x: 82, y: 64, source: "src-lina" },
+    { id: "src-nurse", icon: "🏫", name: "School clinic", x: 52, y: 64, source: "src-nurse" },
+    { id: "gym", icon: "🏋️", name: "Think Gym", x: 18, y: 70, go: "#/gym", say: "Five quick questions at your level." },
+    { id: "market", icon: "🕵️", name: "Trust or Bust", x: 30, y: 80, go: "#/game", say: "The market game: can you trust it?" },
+    { id: "board", icon: "🏆", name: "Noticeboard", x: 70, y: 80, go: "#/board", say: "Class leaderboards (nicknames only)." }
+  ]
 };
 
 // Trust or Bust game cards: quick judgements of whether a source can be trusted for a question.

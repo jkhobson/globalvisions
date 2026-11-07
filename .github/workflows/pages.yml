@@ -31,7 +31,7 @@ jobs:
           if grep -q 'SUPABASE_URL = "";' js/config.js; then
             echo "Demo mode: no server, so the demo keeps its own content."
           else
-            rm site/js/content/fizz.js
+            rm site/js/content/fizz.js site/js/content/signal.js
             echo "School mode: answer key left out."
           fi
       - uses: actions/upload-pages-artifact@v3

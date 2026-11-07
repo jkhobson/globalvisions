@@ -1,18 +1,25 @@
 // Student app: screens and routing. Rules live in engine.js; content lives in js/content/.
 import { BLOCKS, OBJECTIVES, SKILLS, SKILL_ICON, SUPPORT, TRAPS } from "./content/curriculum.js";
-import { WORLDS } from "./content/worlds.js";
+import { WORLDS, PACKS } from "./content/worlds.js";
 import { applyAnswer, mastery, nextBlock, nextDemand, nextSupport, rank, ranks, trapCounts, wrapping, mastered, dealSlots, placeOptions, seenCounts, freshest, quickGuesses, QUICK_MS } from "./engine.js";
 import * as S from "./store.js";
 import { DEMO } from "./config.js";
 // Demo mode has the full content, answer key included. School mode loads the questions without the key:
 // the server says whether each tap is right, so the key never reaches a student's device.
-const { GLOSSARY, ITEMS, MISSION, SOURCES, TRUST_CARDS } = await import(DEMO ? "./content/fizz.js" : "./content/fizz-public.js");
+// One content pack per mission (island); they are merged here.
+const LOADED = await Promise.all(PACKS.map(n => import(DEMO ? `./content/${n}.js` : `./content/${n}-public.js`)));
+const GLOSSARY = Object.assign({}, ...LOADED.map(p => p.GLOSSARY));
+const SOURCES = Object.assign({}, ...LOADED.map(p => p.SOURCES));
+const ITEMS = LOADED.flatMap(p => p.ITEMS);
+const MISSIONS = LOADED.map(p => p.MISSION);
+const TRUST_CARDS = LOADED.find(p => p.TRUST_CARDS).TRUST_CARDS;
 import { demoClass } from "./demo-class.js";
 import { weeklyStreak, weekKey, gameXP } from "./kit/rewards.js";
 import { play, soundUser, soundOn, setSound, say, canSpeak } from "./kit/sound.js";
 import * as Cel from "./kit/celebrate.js";
 import * as FX from "./kit/game-fx.js";
 import { mountIsland } from "./kit/walker.js";
+import { canBuzz, buzzOn, setBuzz } from "./kit/haptics.js";
 
 const $ = s => document.querySelector(s);
 const app = $("#app");
@@ -89,6 +96,13 @@ const KEY = {
     const o = it.options[k];
     return k === 0 ? { right: true, explain: it.explain } : { right: false, why: o.why, trap: o.trap, b: o.b };
   },
+  // Sentence jumble: seq lists the sentences in the student's order (positions in the list as shown).
+  // A wrong order says which place is wrong and what that place's job is, never which sentence goes there.
+  async checkOrder(it, seq, ms) {
+    if (!DEMO) return REMOTE.checkOrder(it.id, seq, ms);
+    const pos = seq.findIndex((k, n) => k !== n);
+    return pos < 0 ? { right: true, explain: it.explain } : { right: false, pos, why: it.parts[pos].why };
+  },
   async cards() { return DEMO ? balancedCards().map(c => TRUST_CARDS.indexOf(c)) : REMOTE.dealCards(); },
   async card(idx, v) {
     if (!DEMO) return REMOTE.checkCard(idx, v);
@@ -153,18 +167,28 @@ async function schoolSignIn() {
 }
 
 /* ---------------- home: the archipelago ---------------- */
-function missionProgress() {
-  const ids = new Set(S.history().map(h => h.text_id));
-  return MISSION.phases.filter(ph => ids.has(`fizz-${ph.kind}`)).length / MISSION.phases.length;
+// The island the student is on: the one they chose on the map, if it's open, else the first open island with a mission.
+const missionOf = worldId => MISSIONS.find(m => m.world === worldId);
+const worldOf = M => WORLDS.find(w => w.id === M.world);
+function currentMission() {
+  const open = S.teacher().open, isOpen = m => open.includes(m.world);
+  return MISSIONS.find(m => m.world === S.flags().isle && isOpen(m)) || MISSIONS.find(isOpen) || MISSIONS[0];
 }
+const phaseDone = (M, ph) => S.history().some(h => h.text_id === `${M.id}-${ph.kind}`);
+const missionItems = M => M.phases.flatMap(ph => (ph.items || []).flat());
+const missionSources = M => M.places.filter(p => p.source).map(p => p.source);
+function missionProgress(M = currentMission()) {
+  return M.phases.filter(ph => phaseDone(M, ph)).length / M.phases.length;
+}
+// Island health: 60% from finishing the mission, 40% from mastering the skill blocks it practises.
 function islandHealth(world) {
-  if (world.id !== "harvest") return 0;
-  const p = mastery(S.history()), ev = rank(p, "Evaluation");
-  return Math.round(60 * missionProgress() + 40 * ev.mastered / ev.total);
+  const M = missionOf(world.id); if (!M) return 0;
+  const p = mastery(S.history()), blocks = [...new Set(missionItems(M).map(id => ITEM[id] && ITEM[id].block).filter(Boolean))];
+  return Math.round(60 * missionProgress(M) + 40 * blocks.filter(b => mastered(p, b)).length / Math.max(1, blocks.length));
 }
 function home() {
-  const open = S.teacher().open, done = missionProgress();
-  const nextPhase = MISSION.phases.find(ph => !S.history().some(h => h.text_id === `fizz-${ph.kind}`));
+  const open = S.teacher().open, M = currentMission(), W = worldOf(M), done = missionProgress(M);
+  const nextPhase = M.phases.find(ph => !phaseDone(M, ph));
   const intro = S.profile().seenIntro ? "" : `<section class="card intro">
       <h3>Welcome, Agent ${esc(S.profile().nick)}!</h3>
       <ol><li><b>Do the mission</b> on an open island. Check sources and decide what to trust.</li>
@@ -173,31 +197,34 @@ function home() {
       <p class="small">Tip: add this app to your home screen. iPhone: Share → Add to Home Screen. Android: menu ⋮ → Add to Home screen.</p>
       <button class="btn" id="introOk">Got it</button></section>`;
   page(`${intro}
-    <section class="card isle-card"><p class="kicker">🥭 Harvest Key · tap a place to walk there</p>
+    <section class="card isle-card"><p class="kicker">${W.icon} ${W.island} · tap a place to walk there</p>
       <div id="isle"></div>
-      <div class="isle-go" id="isleGo" aria-live="polite"><p class="small">Tap a place to walk there. Find the six sources for your case file.</p></div></section>
+      <div class="isle-go" id="isleGo" aria-live="polite"><p class="small">Tap a place to walk there. Find the ${missionSources(M).length} sources for your case file.</p></div></section>
     <section class="hero card">
-      <p class="kicker">Today's mission · Harvest Key</p>
-      <h2>${MISSION.title}</h2>
+      <p class="kicker">Today's mission · ${W.island}</p>
+      <h2>${M.title}</h2>
       <p>${done >= 1 ? "Mission complete. Replay it, or train in the Think Gym." : `Next: ${nextPhase.title}`}</p>
       <div class="bar"><i style="width:${Math.round(done * 100)}%"></i></div>
       <a class="btn" href="#/mission">${done > 0 && done < 1 ? "Continue" : done >= 1 ? "Replay" : "Start mission"}</a>
     </section>
     <div class="tiles">
+      <a class="tile wide" href="#/dojo"><span>🥋</span><b>Debate Dojo</b><small>Practise PEEL, rebuttals, openings</small></a>
       <a class="tile" href="#/gym"><span>🏋️</span><b>Think Gym</b><small>5 quick questions at your level</small></a>
       <a class="tile" href="#/game"><span>🕵️</span><b>Trust or Bust</b><small>Game: can you trust it?</small></a>
       <a class="tile" href="#/board"><span>🏆</span><b>Leaderboards</b><small>Nicknames only</small></a>
       <a class="tile" href="#/me"><span>🪪</span><b>Agent ID</b><small>Skills, traps, passport</small></a>
     </div>
     <h3 class="sec">The archipelago</h3>
+    <p class="small">Tap an open island to sail there.</p>
     <div class="islands">${WORLDS.map(w => {
-      const isOpen = open.includes(w.id), h = islandHealth(w), stamp = S.flags()[`stamp-${w.id}`];
-      return `<${isOpen && w.missions ? "a href=\"#/mission\"" : "div"} class="island${isOpen ? "" : " locked"}">
-        <span class="ic">${w.icon}</span><b>${w.island}</b><small>${w.challenge} · ${w.title}</small>
+      const isOpen = open.includes(w.id) && missionOf(w.id), h = islandHealth(w), stamp = S.flags()[`stamp-${w.id}`], here = w.id === W.id;
+      return `<${isOpen ? `button type="button" data-w="${w.id}" ${here ? 'aria-current="true"' : ""}` : "div"} class="island${isOpen ? "" : " locked"}${here ? " here" : ""}">
+        <span class="ic">${w.icon}</span><b>${w.island}${here ? " 📍" : ""}</b><small>${w.challenge} · ${w.title}</small>
         ${isOpen ? `<div class="bar health" title="Island health"><i style="width:${h}%"></i></div><small>Island health ${h}%${stamp ? " · 🛂" : ""}</small>`
                  : `<small class="lock">🔒 Opens with ${w.challenge} (${w.weeks})</small>`}
-      </${isOpen && w.missions ? "a" : "div"}>`; }).join("")}</div>`);
-  islandScene($("#isle"), $("#isleGo"));
+      </${isOpen ? "button" : "div"}>`; }).join("")}</div>`);
+  islandScene($("#isle"), $("#isleGo"), M);
+  app.querySelectorAll(".island[data-w]").forEach(b => b.onclick = () => { S.setFlag("isle", b.dataset.w); MISSION_PLAN = null; home(); });
   const ok = $("#introOk"); if (ok) ok.onclick = () => { S.updateProfile({ seenIntro: true }); home(); };
 }
 
@@ -223,14 +250,14 @@ function sourceCard(id, wrap) {
 // One mission run: for each question slot, the version this student has seen least, plus one even spread of
 // right-answer positions across all phases together. Made when the Briefing starts (or a replay starts).
 let MISSION_PLAN = null;
-function newMissionPlan() {
+function newMissionPlan(M) {
   const counts = seenCounts(S.history());
-  const picks = Object.fromEntries(MISSION.phases.map(p => [p.kind, (p.items || []).map(v => Array.isArray(v) ? freshest(v, counts) : v)]));
+  const picks = Object.fromEntries(M.phases.map(p => [p.kind, (p.items || []).map(v => Array.isArray(v) ? freshest(v, counts) : v)]));
   const ids = Object.values(picks).flat(), deal = dealSlots(ids.length);
-  MISSION_PLAN = { picks, slots: Object.fromEntries(ids.map((id, i) => [id, deal[i]])) };
+  MISSION_PLAN = { id: M.id, picks, slots: Object.fromEntries(ids.map((id, i) => [id, deal[i]])) };
   return MISSION_PLAN;
 }
-const missionPlan = () => MISSION_PLAN || newMissionPlan();
+const missionPlan = M => MISSION_PLAN && MISSION_PLAN.id === M.id ? MISSION_PLAN : newMissionPlan(M);
 function runItems(ids, { title, onDone, pick, slots: given } = {}) {
   const answers = []; let i = 0, help = 0;
   const box = document.createElement("div"); box.className = "runner";
@@ -241,6 +268,7 @@ function runItems(ids, { title, onDone, pick, slots: given } = {}) {
     const id = nextId();
     if (!id) return review();
     const it = ITEM[id], level = support(), helpAtStart = help;
+    if (it.kind === "order") return jumble(it);
     let wrap = wrapping(level), tries = 0, simplified = false, traps = [], gap = null;
     const picks = [];                       // every option tapped, by its position in the data (0 = right); the server re-checks these
     const shownAt = Date.now(); let ms = 0;  // time to the first tap, to spot quick guesses
@@ -278,14 +306,14 @@ function runItems(ids, { title, onDone, pick, slots: given } = {}) {
       picks.push(k); if (picks.length === 1) ms = t;
       const o = { t: (opts.find(x => x.k === k) || {}).t, why: r.why, trap: r.trap, b: r.b };
       if (r.right) {
-        play("ok"); btn.classList.add("right");
+        play("ok"); btn.classList.add("right", "pop");
         const barrier = simplified && tries === 1 ? "language" : undefined;
         const sup = tries === 0 || barrier ? "none" : "hint";
         if (barrier) traps = [];           // a language miss is not a thinking trap
         finish({ support: sup, barrier }, `<p class="good">✔ ${tries === 0 ? "Right first time!" : barrier ? "Right! The English was the tricky part, not your thinking." : "Right!"}</p><p>${esc(r.explain || "")}</p><p class="skilltag">${skillLine(it)}</p>`);
         return;
       }
-      play("bad"); btn.classList.add("wrong"); btn.disabled = true; tries++;
+      play("bad"); btn.classList.add("wrong", "shake"); btn.disabled = true; tries++;
       wrongs.push({ t: o.t, why: o.why });
       if (o.trap) traps.push(o.trap); if (o.b) gap = o.b;
       if (tries === 1 && wrap.simpler && !simplified) {
@@ -307,16 +335,69 @@ function runItems(ids, { title, onDone, pick, slots: given } = {}) {
     }
     function finish(res, html) {
       box.querySelectorAll(".opt").forEach(b => b.disabled = true);
-      const a = { item: it.id, block: it.block, demand: it.demand, first_try: res.support === "none" && !res.barrier, ...res, traps, gap: res.support === "explained" ? gap : null, help: help - helpAtStart, picks, simplified, ms, wrongs };
-      answers.push(a); i++;
-      // Two quick wrong first taps in one set: a gentle nudge to read first.
-      const nudge = quickGuesses(answers) === 2 && a.picks[0] !== 0 && ms < QUICK_MS
-        ? `<p class="note">🐢 Slow down, agent. Read the source and the question first. Quick guesses lower your progress and earn less XP.</p>` : "";
-      html = nudge + html;
-      const fb = box.querySelector(".fb");
-      fb.innerHTML = html + `<button class="btn" id="next">${(pick ? answers.length >= ids : i >= ids.length) ? "Finish" : "Next"}</button>`;
-      box.querySelector("#next").onclick = () => { show(); box.scrollIntoView({ block: "start" }); };
-      box.querySelector("#next").focus({ preventScroll: true }); settle();
+      wrapUp({ item: it.id, block: it.block, demand: it.demand, first_try: res.support === "none" && !res.barrier, ...res, traps, gap: res.support === "explained" ? gap : null, help: help - helpAtStart, picks, simplified, ms, wrongs }, html);
+    }
+    draw();
+  }
+  // Records one finished question and shows the Next button.
+  function wrapUp(a, html) {
+    answers.push(a); i++;
+    // Two quick wrong first taps in one set: a gentle nudge to read first.
+    const nudge = quickGuesses(answers) === 2 && a.picks[0] !== 0 && a.ms < QUICK_MS
+      ? `<p class="note">🐢 Slow down, agent. Read the source and the question first. Quick guesses lower your progress and earn less XP.</p>` : "";
+    const fb = box.querySelector(".fb");
+    fb.innerHTML = nudge + html + `<button class="btn" id="next">${(pick ? answers.length >= ids : i >= ids.length) ? "Finish" : "Next"}</button>`;
+    box.querySelector("#next").onclick = () => { show(); box.scrollIntoView({ block: "start" }); };
+    box.querySelector("#next").focus({ preventScroll: true });
+    requestAnimationFrame(() => bring(fb.lastElementChild));
+  }
+  // Sentence jumble: tap the sentences into order, then check. Two wrong checks, then move on without showing the order.
+  // In demo mode the sentences are shown in the same alphabetical order as the school-mode file.
+  function jumble(it) {
+    const helpAtStart = help, wrap = wrapping(support()), total = pick ? ids : ids.length;
+    const shown = (DEMO ? it.parts.map((p, k) => ({ t: p.t, k })).sort((a, b) => a.t.localeCompare(b.t, "en")) : it.parts.map((p, k) => ({ t: p.t, k })));
+    const text = Object.fromEntries(shown.map(p => [p.k, p.t]));
+    let chosen = [], tries = 0, busy = false, ms = 0, over = false, justPlaced = null, lastWrong = "";
+    const results = [], wrongs = [], shownAt = Date.now();
+    function draw(fbHTML = "") {
+      const left = shown.filter(p => !chosen.includes(p.k));
+      box.innerHTML = `<p class="kicker">${title || ""} · ${answers.length + 1} of ${total}</p>
+        <div class="dots">${Array.from({ length: total }, (_, k) => `<i class="${k < answers.length ? (answers[k].support === "none" ? "ok" : answers[k].support === "hint" ? "mid" : "no") : k === answers.length ? "now" : ""}"></i>`).join("")}</div>
+        ${it.source ? sourceCard(it.source, wrap) : ""}
+        <div class="q card jumble"><p class="stem">🧩 ${richText(it.stem[wrap.stem], "off")}</p>
+          ${canSpeak ? `<button class="icon say" data-say="q" aria-label="Read the question aloud">🔊</button>` : ""}
+          <ol class="j-order" aria-label="Your order">${chosen.map(k => `<li><button class="jpart placed" data-k="${k}" ${over ? "disabled" : ""} aria-label="Remove: ${esc(text[k])}">${esc(text[k])}</button></li>`).join("")}
+            ${Array.from({ length: shown.length - chosen.length }, () => `<li class="j-empty" aria-hidden="true"></li>`).join("")}</ol>
+          ${left.length ? `<p class="small">Tap the sentence that comes ${chosen.length ? "next" : "first"}. Tap a placed sentence to take it back.</p>` : ""}
+          <div class="j-pool">${left.map(p => `<button class="jpart" data-k="${p.k}" ${over ? "disabled" : ""}>${esc(p.t)}</button>`).join("")}</div>
+          ${over ? "" : `<button class="btn" id="checkOrder" ${chosen.length < shown.length || chosen.join() === lastWrong ? "disabled" : ""}>Check my order</button>`}
+          ${!over && lastWrong && chosen.join() === lastWrong ? `<p class="small">Change the order before you check again.</p>` : ""}
+          <div class="fb" aria-live="polite">${fbHTML}</div></div>`;
+      box.querySelectorAll(".say").forEach(b => b.onclick = () => { help++; say(b.dataset.say === "src" ? SOURCES[it.source][wrap.text].replace(/\*\*/g, "") : it.stem[wrap.stem]); });
+      box.querySelectorAll(".gl").forEach(b => b.onclick = () => { help++; play("info"); glossaryPop(b); });
+      box.querySelectorAll(".j-pool .jpart").forEach(b => b.onclick = () => { play("click"); chosen.push(+b.dataset.k); justPlaced = +b.dataset.k; draw(); });
+      box.querySelectorAll(".j-order .jpart").forEach(b => b.onclick = () => { play("tap"); chosen = chosen.filter(k => k !== +b.dataset.k); draw(); });
+      if (justPlaced !== null) { const el = box.querySelector(`.j-order .jpart[data-k="${justPlaced}"]`); if (el) el.classList.add("snap"); justPlaced = null; }
+      const c = box.querySelector("#checkOrder"); if (c) c.onclick = check;
+    }
+    async function check() {
+      if (busy) return; busy = true;
+      const t = results.length ? ms : Date.now() - shownAt;
+      let r;
+      try { r = await KEY.checkOrder(it, chosen, t); }
+      catch (e) { busy = false; box.querySelector(".fb").innerHTML = `<p class="info">No connection. Check your internet and try again.</p>`; return; }
+      busy = false;
+      const end = (sup, html) => { over = true; draw(); wrapUp({ item: it.id, block: it.block, demand: it.demand, first_try: sup === "none", support: sup, traps: [], gap: null, help: help - helpAtStart, picks: results, simplified: false, ms, wrongs }, html); };
+      if (r.locked) return end("explained", `<p class="info">You've used your tries on this one for now. You'll meet this skill again in a new question.</p>`);
+      results.push(r.right ? 0 : 1); if (results.length === 1) ms = t;
+      if (r.right) { play("ok"); box.querySelector(".j-order").classList.add("solved"); return end(tries === 0 ? "none" : "hint", `<p class="good">✔ ${tries === 0 ? "Right first time!" : "Right!"}</p><p>${esc(r.explain || "")}</p><p class="skilltag">${skillLine(it)}</p>`); }
+      play("bad"); tries++; lastWrong = chosen.join();
+      const wrongEl = box.querySelectorAll(".j-order .jpart")[r.pos]; if (wrongEl) { wrongEl.classList.remove("shake"); void wrongEl.offsetWidth; wrongEl.classList.add("shake"); }
+      const why = `<p class="bad">✘ Sentence ${r.pos + 1} isn't in the right place yet. ${esc(r.why || "")}</p>`;
+      wrongs.push({ t: "Your sentence order", why: `Sentence ${r.pos + 1}: ${r.why || ""}` });
+      if (tries === 1) { play("info"); draw(`${why}<p class="info">💡 Hint: ${esc(it.hint)}</p><p class="small">Move sentences by tapping them, then check again.</p>`); requestAnimationFrame(() => bring(box.querySelector(".fb").lastElementChild)); return; }
+      // Out of tries: the right order is never shown.
+      end("explained", `${why}<p class="info">Not this time. We won't show the order: you'll meet this skill again in a new jumble.</p>`);
     }
     draw();
   }
@@ -370,29 +451,27 @@ function celebrate(xp, before, extraBig) {
 
 /* ---------------- the mission ---------------- */
 function missionScreen() {
-  const ids = new Set(S.history().map(h => h.text_id));
-  const phase = MISSION.phases.find(ph => !ids.has(`fizz-${ph.kind}`)) || null;
-  if (!phase) return missionDone();
-  const steps = MISSION.phases.map(ph => `<li class="${ids.has(`fizz-${ph.kind}`) ? "done" : ph === phase ? "now" : ""}">${ph.title}</li>`).join("");
+  const M = currentMission(), W = worldOf(M);
+  const phase = M.phases.find(ph => !phaseDone(M, ph)) || null;
+  if (!phase) return missionDone(M);
+  const steps = M.phases.map(ph => `<li class="${phaseDone(M, ph) ? "done" : ph === phase ? "now" : ""}">${ph.title}</li>`).join("");
   const wrap = wrapping(support());
-  page(`<p class="kicker">Harvest Key · ${MISSION.title}</p><ol class="phases">${steps}</ol><div id="stage"></div>`);
+  page(`<p class="kicker">${W.island} · ${M.title}</p><ol class="phases">${steps}</ol><div id="stage"></div>`);
   const stage = $("#stage");
-  if (phase.kind === "debrief") return debrief(stage);
+  if (phase.kind === "debrief") return debrief(stage, M);
   const intro = document.createElement("div");
   intro.className = "card brief";
   intro.innerHTML = phase.kind === "briefing"
-    ? `<p class="kicker">📻 Message from the Chief</p><p>${esc(MISSION.brief[wrap.stem])}</p>${canSpeak ? `<button class="icon say" aria-label="Read aloud">🔊</button>` : ""}<button class="btn" id="begin">Accept mission</button>`
-    : phase.kind === "dossier"
-    ? `<p class="kicker">🗂️ Field Dossier</p><p>${wrap.stem === "simple" ? "Six sources. Some you can trust. Some you can't. Check each one." : "Six sources have arrived. Some are unreliable on purpose. Check who made each one, when, and why."}</p><button class="btn" id="begin">Open the dossier</button>`
-    : `<p class="kicker">📌 Evidence Board</p><p>${wrap.stem === "simple" ? "Now compare the sources and the arguments." : "Time to weigh the evidence and judge the arguments people are making to the council."}</p><button class="btn" id="begin">Go to the board</button>`;
+    ? `<p class="kicker">${esc(M.from)}</p><p>${esc(M.brief[wrap.stem])}</p>${canSpeak ? `<button class="icon say" aria-label="Read aloud">🔊</button>` : ""}<button class="btn" id="begin">Accept mission</button>`
+    : `<p class="kicker">${phase.icon || ""} ${esc(phase.title)}</p><p>${esc(phase.intro[wrap.stem])}</p><button class="btn" id="begin">${esc(phase.go || "Start")}</button>`;
   stage.appendChild(intro);
-  const s = intro.querySelector(".say"); if (s) s.onclick = () => say(MISSION.brief[wrap.stem]);
+  const s = intro.querySelector(".say"); if (s) s.onclick = () => say(M.brief[wrap.stem]);
   intro.querySelector("#begin").onclick = () => {
     play("flip"); stage.innerHTML = "";
     const before = ranks(mastery(S.history()));
-    const plan = phase.kind === "briefing" ? newMissionPlan() : missionPlan(), ids = plan.picks[phase.kind];
+    const plan = phase.kind === "briefing" ? newMissionPlan(M) : missionPlan(M), ids = plan.picks[phase.kind];
     stage.appendChild(runItems(ids, { title: phase.title, slots: ids.map(id => plan.slots[id]), onDone: (answers, help) => {
-      const att = S.saveAttempt({ id: `fizz-${phase.kind}`, mode: "mission", answers });
+      const att = S.saveAttempt({ id: `${M.id}-${phase.kind}`, mode: "mission", answers });
       const note = afterTask(help);
       stage.innerHTML = `<div class="card done"><h2>${phase.title} complete</h2><p>+${att.xp} XP</p>${note}<button class="btn" id="nextPhase">Next phase</button> <a class="btn ghost" href="#/">Map</a></div>`;
       $("#nextPhase").onclick = missionScreen;       // same hash, so call the screen directly
@@ -400,40 +479,41 @@ function missionScreen() {
     } }));
   };
 }
-function debrief(stage) {
+function debrief(stage, M) {
   const level = support(), frames = level <= 1;
   stage.innerHTML = `<div class="card"><p class="kicker">🪞 Debrief · Reflection</p>
-    <p>${level <= 1 ? "Think about your mission. There are no wrong answers here." : "Reflect on the mission. There are no wrong answers: say what you think and why."}</p>
-    ${MISSION.debrief.prompts.map((p, i) => `<label class="refl"><b>${esc(p.q)}</b>
+    <p>${esc(M.debrief.intro)}</p>
+    ${M.debrief.prompts.map((p, i) => `<label class="refl"><b>${esc(p.q)}</b>
       ${frames ? `<small>Try: ${esc(p.frame)}</small>` : ""}
       <textarea id="r${i}" rows="3" placeholder="${frames ? esc(p.frame) : ""}"></textarea></label>`).join("")}
     <button class="btn" id="saveR">Finish mission</button><p class="small" id="rmsg"></p></div>`;
   $("#saveR").onclick = () => {
-    const texts = MISSION.debrief.prompts.map((_, i) => $(`#r${i}`).value.trim());
+    const texts = M.debrief.prompts.map((_, i) => $(`#r${i}`).value.trim());
     if (texts.filter(t => t.length >= 8).length < 2) { $("#rmsg").textContent = "Write at least two answers. One sentence each is fine."; return; }
     const before = ranks(mastery(S.history()));
-    const answers = texts.map((t, i) => ({ item: `fizz-refl-${i}`, block: MISSION.debrief.block, reflection: true, text: t, support: "none", help: 0 }));
-    const att = S.saveAttempt({ id: "fizz-debrief", mode: "mission", answers, bonus: 50 });
-    S.setFlag("stamp-harvest", true);
+    const answers = texts.map((t, i) => ({ item: `${M.id}-refl-${i}`, block: M.debrief.block, reflection: true, text: t, support: "none", help: 0 }));
+    const att = S.saveAttempt({ id: `${M.id}-debrief`, mode: "mission", answers, bonus: 50 });
+    S.setFlag(`stamp-${M.world}`, true);
     afterTask(0);
-    celebrate(att.xp, before, { icon: "🛂", title: `Mission complete, ${S.profile().nick}!`, sub: "Harvest Key is recovering · new passport stamp" });
-    missionDone();
+    celebrate(att.xp, before, { icon: "🛂", title: `Mission complete, ${S.profile().nick}!`, sub: M.stamp });
+    missionDone(M);
   };
 }
-function missionDone() {
-  page(`<div class="card done"><p class="kicker">Harvest Key · ${MISSION.title}</p><h2>Mission complete 🛂</h2>
-    <p>The council now knows which sources to trust. Harvest Key's health is ${islandHealth(WORLDS[1])}%.</p>
-    <p class="bring">🏠 ${esc(MISSION.bringItHome)}</p>
+function missionDone(M) {
+  const W = worldOf(M);
+  page(`<div class="card done"><p class="kicker">${W.island} · ${M.title}</p><h2>Mission complete 🛂</h2>
+    <p>${esc(M.done)} ${W.island}'s health is ${islandHealth(W)}%.</p>
+    <p class="bring">🏠 ${esc(M.bringItHome)}</p>
     <a class="btn" href="#/gym">Train in the Think Gym</a> <button class="btn ghost" id="replay">Replay mission</button></div>`);
-  $("#replay").onclick = () => { S.setFlag("replay", Date.now()); replayMission(); };
+  $("#replay").onclick = () => { S.setFlag("replay", Date.now()); replayMission(M); };
 }
-function replayMission() {
+function replayMission(M) {
   // Replay runs all question phases in one go (replay XP rules apply: half today, then nothing).
-  const plan = newMissionPlan(), items = Object.values(plan.picks).flat();
-  page(`<p class="kicker">Replay · ${MISSION.title}</p><div id="stage"></div>`);
+  const plan = newMissionPlan(M), items = Object.values(plan.picks).flat();
+  page(`<p class="kicker">Replay · ${M.title}</p><div id="stage"></div>`);
   const before = ranks(mastery(S.history()));
   $("#stage").appendChild(runItems(items, { title: "Replay", slots: items.map(id => plan.slots[id]), onDone: (answers, help) => {
-    const att = S.saveAttempt({ id: "fizz-replay", mode: "mission", answers });
+    const att = S.saveAttempt({ id: `${M.id}-replay`, mode: "mission", answers });
     const note = afterTask(help);
     $("#stage").innerHTML = `<div class="card done"><h2>Replay complete</h2><p>+${att.xp} XP${att.xp === 0 ? " (replays pay half the first time each day, then nothing)" : ""}</p>${note}<a class="btn" href="#/">Map</a></div>`;
     celebrate(att.xp, before);
@@ -441,19 +521,24 @@ function replayMission() {
 }
 
 /* ---------------- Think Gym: adaptive practice ---------------- */
+// Skills with enough questions to train (at least 6), in the curriculum's order.
+const GYM_SKILLS = SKILLS.filter(s => ITEMS.filter(i => BLOCKS[i.block].skill === s).length >= 6);
 function gym() {
-  const p = mastery(S.history()), blockNow = nextBlock(p, "Evaluation");
-  page(`<div class="card"><p class="kicker">🏋️ Think Gym · Evaluation</p>
+  const skill = GYM_SKILLS.includes(S.profile().gymSkill) ? S.profile().gymSkill : GYM_SKILLS[0];
+  const p = mastery(S.history()), blockNow = nextBlock(p, skill);
+  page(`<div class="card"><p class="kicker">🏋️ Think Gym · ${skill}</p>
+    <div class="seg${GYM_SKILLS.length === 3 ? " three" : ""}" role="group" aria-label="Skill to train">${GYM_SKILLS.map(s => `<button class="segb${s === skill ? " on" : ""}" data-skill="${s}">${SKILL_ICON[s]} ${s}</button>`).join("")}</div>
     <p>Five questions picked for you. Get two right first time in a row and they get harder.</p>
     <p class="small">Focus now: <b>${BLOCKS[blockNow].name}</b></p><button class="btn" id="go">Start</button></div><div id="stage"></div>`);
+  app.querySelectorAll("[data-skill]").forEach(b => b.onclick = () => { S.updateProfile({ gymSkill: b.dataset.skill }); gym(); });
   $("#go").onclick = () => {
     $("#go").closest(".card").remove();
     const live = { ...p }, seen = new Set(), before = ranks(p), counts = seenCounts(S.history());
     let demand = S.profile().gymDemand || 0;
     const pick = answers => {
       if (answers.length) { applyAnswer(live, answers[answers.length - 1]); demand = nextDemand(demand, answers); }
-      const b = nextBlock(live, "Evaluation");
-      const pool = ITEMS.filter(i => BLOCKS[i.block].skill === "Evaluation" && !seen.has(i.id));
+      const b = nextBlock(live, skill);
+      const pool = ITEMS.filter(i => BLOCKS[i.block].skill === skill && !seen.has(i.id));
       // Least-seen questions first, then the closest to the right difficulty.
       const order = (x, y) => ((counts[x.id] || 0) - (counts[y.id] || 0)) || (Math.abs(x.demand - demand) - Math.abs(y.demand - demand)) || (Math.random() - 0.5);
       const best = pool.filter(i => i.block === b).sort(order)[0] || pool.sort(order)[0];
@@ -465,6 +550,46 @@ function gym() {
       const note = afterTask(help), right = answers.filter(a => a.support === "none").length;
       $("#stage").innerHTML = `<div class="card done"><h2>Workout done</h2><p>${right} of 5 right first time · +${att.xp} XP</p>${note}<button class="btn" id="again">Again</button> <a class="btn ghost" href="#/me">See my skills</a></div>`;
       $("#again").onclick = gym;
+      celebrate(att.xp, before);
+    } }));
+  };
+}
+
+/* ---------------- Debate Dojo: quick rounds on framing an argument ---------------- */
+// For debate week: PEEL points, rebuttals, openings and closings, with sentence jumbles mixed in.
+// Each round spreads its 8 questions across the three blocks, weakest block first, least-seen questions first,
+// and the difficulty steps up after two right first time (like the Think Gym). Saved as practice, so the
+// same XP rules apply (seen questions earn nothing again).
+const DOJO_BLOCKS = ["M4", "M5", "M6"], DOJO_N = 8;
+function dojo() {
+  const p = mastery(S.history());
+  page(`<div class="card dojo"><p class="kicker">🥋 Debate Dojo</p><h2>Frame your argument</h2>
+    <p>${DOJO_N} quick rounds to get ready for the debate. Sort sentences, fix jumbled speeches and pick the strongest rebuttal.</p>
+    <div class="dojo-blocks">${DOJO_BLOCKS.map(b => `<div class="blk"><span>${esc(BLOCKS[b].name)}</span>
+      <div class="bar ${mastered(p, b) ? "full" : ""}"><i style="width:${Math.round(Math.min(1, p[b] / 0.85) * 100)}%"></i></div></div>`).join("")}</div>
+    <p class="small">Remember: <b>PEEL</b> = Point, Evidence, Explain, Link. <b>Rebuttal</b> = They said, However, Because, So.</p>
+    <button class="btn" id="go">Start a round</button></div><div id="stage"></div>`);
+  $("#go").onclick = () => {
+    $("#go").closest(".card").remove();
+    const live = { ...p }, seen = new Set(), before = ranks(p), counts = seenCounts(S.history()), used = {};
+    let demand = S.profile().dojoDemand || 0;
+    const pick = answers => {
+      if (answers.length) { applyAnswer(live, answers[answers.length - 1]); demand = nextDemand(demand, answers); }
+      const b = [...DOJO_BLOCKS].sort((x, y) => ((used[x] || 0) - (used[y] || 0)) || ((live[x] || 0) - (live[y] || 0)))[0];
+      const pool = ITEMS.filter(i => DOJO_BLOCKS.includes(i.block) && !seen.has(i.id));
+      const order = (x, y) => ((counts[x.id] || 0) - (counts[y.id] || 0)) || (Math.abs(x.demand - demand) - Math.abs(y.demand - demand)) || (Math.random() - 0.5);
+      const best = pool.filter(i => i.block === b).sort(order)[0] || pool.sort(order)[0];
+      if (best) { seen.add(best.id); used[best.block] = (used[best.block] || 0) + 1; }
+      return best && best.id;
+    };
+    $("#stage").appendChild(runItems(DOJO_N, { title: "Debate Dojo", pick, onDone: (answers, help) => {
+      S.updateProfile({ dojoDemand: demand });
+      const att = S.saveAttempt({ id: `dojo-${new Date().toISOString().slice(0, 16)}`, mode: "practice", answers });
+      const note = afterTask(help), right = answers.filter(a => a.support === "none").length;
+      let run = 0, streak = 0; answers.forEach(a => { run = a.support === "none" ? run + 1 : 0; streak = Math.max(streak, run); });
+      $("#stage").innerHTML = `<div class="card done"><h2>Round done 🥋</h2><p>${right} of ${answers.length} right first time · best streak ${streak} · +${att.xp} XP</p>${note}
+        <button class="btn" id="again">Another round</button> <a class="btn ghost" href="#/me">See my skills</a></div>`;
+      $("#again").onclick = dojo;
       celebrate(att.xp, before);
     } }));
   };
@@ -527,35 +652,27 @@ function game() {
   }).catch(() => { $("#gcard").innerHTML = offlineNote; $("#retry").onclick = game; });
 }
 
-/* ---------------- Harvest Key: walk the agent between places ---------------- */
-// The Map screen shows the island in 3D. Students tap a place and their agent walks there, then they go in.
-// The Council Hall holds the mission; the six sources can be found where they come from and go into the case file.
-// Answering questions stays a plain tap: the walking is only for getting around. Everything here is fictional.
-const SPOTS = [
-  { id: "council", icon: "🏛️", name: "Council Hall", x: 50, y: 16, go: "#/mission" },
-  { id: "src-zap", icon: "🏪", name: "ZapFizz shop", x: 17, y: 30, source: "src-zap" },
-  { id: "src-report", icon: "🏥", name: "Health Service", x: 80, y: 28, source: "src-report" },
-  { id: "src-news", icon: "🗞️", name: "Newsstand", x: 30, y: 50, source: "src-news" },
-  { id: "src-study", icon: "🔬", name: "Research lab", x: 70, y: 47, source: "src-study" },
-  { id: "src-lina", icon: "📱", name: "Phone mast", x: 82, y: 64, source: "src-lina" },
-  { id: "src-nurse", icon: "🏫", name: "School clinic", x: 52, y: 64, source: "src-nurse" },
-  { id: "gym", icon: "🏋️", name: "Think Gym", x: 18, y: 70, go: "#/gym", say: "Five quick questions at your level." },
-  { id: "market", icon: "🕵️", name: "Trust or Bust", x: 30, y: 80, go: "#/game", say: "The market game: can you trust it?" },
-  { id: "board", icon: "🏆", name: "Noticeboard", x: 70, y: 80, go: "#/board", say: "Class leaderboards (nicknames only)." }
-];
-function islandScene(host, goBox) {
-  const found = S.flags().found || [], done = missionProgress();
-  const next = MISSION.phases.find(ph => !S.history().some(h => h.text_id === `fizz-${ph.kind}`));
-  const isle = mountIsland(host, { spots: SPOTS, avatar: esc(S.profile().avatar), start: S.flags().pos || { x: 50, y: 40 },
-    onMove: p => S.setFlag("pos", { x: Math.round(p.x), y: Math.round(p.y) }), onArrive: arrive });
+/* ---------------- the island map: walk the agent between places ---------------- */
+// The Map screen shows the current island in 3D. Students tap a place and their agent walks there, then they go in.
+// One place holds the mission; the sources can be found where they come from and go into the case file.
+// Answering questions stays a plain tap: the walking is only for getting around. Places come from each mission's
+// content (MISSION.places). Everything here is fictional.
+function islandScene(host, goBox, M) {
+  const found = S.flags().found || [], done = missionProgress(M), sources = missionSources(M);
+  const next = M.phases.find(ph => !phaseDone(M, ph));
+  const SPOTS = M.places.map(p => p.mission ? { ...p, go: "#/mission" } : p);
+  host.className = `isle-${M.world}`;
+  const posKey = `pos-${M.world}`, start = S.flags()[posKey] || (M.world === "harvest" && S.flags().pos) || { x: 50, y: 40 };
+  const isle = mountIsland(host, { spots: SPOTS, avatar: esc(S.profile().avatar), start,
+    onMove: p => S.setFlag(posKey, { x: Math.round(p.x), y: Math.round(p.y) }), onArrive: arrive });
   SPOTS.forEach(sp => {
     const el = host.querySelector(`.place[data-id="${sp.id}"]`);
     if (sp.source && found.includes(sp.source)) el.classList.add("done");
-    if (sp.id === "council") { el.classList.toggle("next", done < 1); el.classList.toggle("done", done >= 1); }
+    if (sp.mission) { el.classList.toggle("next", done < 1); el.classList.toggle("done", done >= 1); }
   });
   function arrive(sp) {
     play("tap");
-    const text = sp.id === "council" ? (done >= 1 ? "Mission complete. Replay it?" : `The Chief is waiting. Next: ${next.title}.`)
+    const text = sp.mission ? (done >= 1 ? "Mission complete. Replay it?" : `Your mission starts here. Next: ${next.title}.`)
       : sp.source ? (found.includes(sp.source) ? "Already in your case file." : "There's a source here. Collect it for your case file.") : sp.say;
     goBox.innerHTML = `<p><b>${esc(sp.name)}</b><br><span class="small">${esc(text)}</span></p><button class="btn" id="goin">Go in</button>`;
     $("#goin").onclick = () => sp.go ? (location.hash = sp.go) : openSource(sp);
@@ -566,7 +683,7 @@ function islandScene(host, goBox) {
     if (!f.includes(sp.source)) { S.setFlag("found", [...f, sp.source]); play("ok"); }
     host.querySelector(`.place[data-id="${sp.id}"]`).classList.add("done");
     goBox.innerHTML = `<div>${sourceCard(sp.source, wrap)}
-      <p class="small">✔ In your case file (${(S.flags().found || []).length} of 6). Who made it, and why? You'll judge it in the mission.</p>
+      <p class="small">✔ In your case file (${(S.flags().found || []).filter(x => sources.includes(x)).length} of ${sources.length}). Who made it, and why? You'll meet it in the mission.</p>
       <button class="btn ghost" id="closecard">Keep exploring</button></div>`;
     goBox.querySelectorAll(".gl").forEach(b => b.onclick = () => { play("info"); glossaryPop(b); });
     const sayb = goBox.querySelector(".say"); if (sayb) sayb.onclick = () => say(src[wrap.text].replace(/\*\*/g, ""));
@@ -603,7 +720,7 @@ function drawBoard(t, rows) {
   const meWeekPos = week.findIndex(r => r.me) + 1, myWeek = meWeekPos ? week[meWeekPos - 1].weekXP : 0;
   const classHealth = rows.length ? Math.round(rows.reduce((s, r) => s + r.mastered, 0) / (rows.length * Object.keys(BLOCKS).length) * 100) : 0;
   page(`<h2>Leaderboards</h2><p class="small">Nicknames only. The weekly board resets every Monday, so anyone can win.</p>
-    ${t.island ? `<section class="card"><h3>🏝️ Class goal: restore Harvest Key</h3><p>Every block anyone in the class masters helps.</p><div class="bar health"><i style="width:${classHealth}%"></i></div><p class="small">${classHealth}% restored</p></section>` : ""}
+    ${t.island ? `<section class="card"><h3>🏝️ Class goal: restore ${worldOf(currentMission()).island}</h3><p>Every block anyone in the class masters helps.</p><div class="bar health"><i style="width:${classHealth}%"></i></div><p class="small">${classHealth}% restored</p></section>` : ""}
     ${t.week ? `<section class="card"><h3>⭐ This week's XP</h3>${list(week, "weekXP", "XP")}${meWeekPos > 10 ? `<p class="small">You: #${meWeekPos} with ${myWeek} XP</p>` : ""}</section>` : ""}
     ${t.climbers ? `<section class="card"><h3>🧗 Skill climbers</h3><p class="small">Blocks mastered this week. Growth, not just top scores.</p>${list(climb, "climbed", "blocks")}</section>` : ""}
     ${!t.week && !t.climbers && !t.island ? `<p class="card">Your teacher has turned the leaderboards off for now.</p>` : ""}`);
@@ -629,12 +746,16 @@ function me() {
     <p class="small">The app also adjusts this for you. More help never costs XP.</p></section>
     <h3 class="sec">Text size</h3>
     <section class="card"><div class="seg">${[["Normal", false], ["Large", true]].map(([n, v]) => `<button class="segb${!!prof.bigText === v ? " on" : ""}" data-big="${v}">${n}</button>`).join("")}</div></section>
+    <h3 class="sec">Vibration</h3>
+    <section class="card"><div class="seg">${[["On", true], ["Off", false]].map(([n, v]) => `<button class="segb${buzzOn() === v ? " on" : ""}" data-buzz="${v}">${n}</button>`).join("")}</div>
+    <p class="small">${canBuzz ? "A short buzz when you tap, get it right or get it wrong." : "This device or browser can't vibrate for web apps (iPhones and iPads can't). Everything else works the same."}</p></section>
     <h3 class="sec">Colours</h3>
     <section class="card"><div class="seg three">${[["Auto", "auto"], ["Light", "light"], ["Dark", "dark"]].map(([n, v]) => `<button class="segb${(prof.theme || "light") === v ? " on" : ""}" data-theme="${v}">${n}</button>`).join("")}</div>
     <p class="small">Light is the default. Auto follows your phone's setting.</p></section>
     ${DEMO ? `<p><a class="btn ghost" href="teacher.html">Teacher view (demo)</a></p>` : ""}
     <button class="btn ghost" id="out">${DEMO ? "Sign out and reset demo" : "Sign out"}</button>`);
   app.querySelectorAll("[data-theme]").forEach(b => b.onclick = () => { S.updateProfile({ theme: b.dataset.theme }); applyText(); me(); });
+  app.querySelectorAll("[data-buzz]").forEach(b => b.onclick = () => { setBuzz(b.dataset.buzz === "true"); play("tap"); me(); });
   app.querySelectorAll("[data-big]").forEach(b => b.onclick = () => { S.updateProfile({ bigText: b.dataset.big === "true" }); applyText(); me(); });
   app.querySelectorAll("input[name=sup]").forEach(x => x.onchange = () => { S.updateProfile({ support: +x.value, tasks: [] }); if (REMOTE) REMOTE.setSupport(+x.value).catch(() => {}); play("tap"); });
   $("#out").onclick = async () => {
@@ -645,7 +766,7 @@ function me() {
 }
 
 /* ---------------- routing ---------------- */
-const ROUTES = { "": home, "/": home, "/island": home, "/mission": missionScreen, "/gym": gym, "/game": game, "/board": board, "/me": me };
+const ROUTES = { "": home, "/": home, "/island": home, "/mission": missionScreen, "/gym": gym, "/dojo": dojo, "/game": game, "/board": board, "/me": me };
 // Text size and colour theme from the profile. Light is the default; "auto" removes the attribute so the phone's setting decides.
 function applyText() {
   const p = S.profile(), root = document.documentElement;

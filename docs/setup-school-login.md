@@ -72,9 +72,9 @@ These menus were correct as far as I know in November 2026. Supabase and Google 
 
 ## Where the answers live
 
-In school mode the app never has the answer key. It loads the questions from `js/content/fizz-public.js`, which lists the options in alphabetical order and has no reasons or explanations. Each tap goes to the server, which says right or wrong and gives the reason for a wrong choice. After two wrong taps a question is locked until the activity is saved, and the XP is worked out from the server's record of the taps, not from what the app reports.
+In school mode the app never has the answer key. It loads the questions from `js/content/<island>-public.js` (for example `fizz-public.js` and `signal-public.js`), which list the options in alphabetical order and has no reasons or explanations. Each tap goes to the server, which says right or wrong and gives the reason for a wrong choice. After two wrong taps a question is locked until the activity is saved, and the XP is worked out from the server's record of the taps, not from what the app reports.
 
-The full content with the answers (`js/content/fizz.js`) stays in this private repository. The publish workflow (`.github/workflows/pages.yml`) leaves it off the website in school mode.
+The full content with the answers (`js/content/fizz.js`, `js/content/signal.js`) stays in this private repository. The publish workflow (`.github/workflows/pages.yml`) leaves it off the website in school mode.
 
 Trade-off: in school mode each tap needs an internet connection.
 

@@ -33,7 +33,7 @@ test("rank grows with blocks mastered", () => {
   assert.equal(rank(mastery([]), "Evaluation").name, "Explorer");
   const all = ["E1", "E2", "E3", "E4", "E5"].flatMap(b => Array(8).fill(right(b)));
   assert.equal(rank(mastery([at(all)]), "Evaluation").name, "Ambassador");
-  assert.equal(rank(mastery([]), "Collaboration"), null);
+  assert.equal(rank(mastery([]), "Analysis"), null);
 });
 
 test("demand: 2 right first time up, 2 missed down, never outside 0..2", () => {

@@ -92,6 +92,12 @@ export async function checkAnswer(item, pick, ms, simplified) {
   const c = await sb(); const { data, error } = await c.rpc("check_answer", { p_item: item, p_pick: pick, p_ms: Math.round(ms || 0), p_simplified: !!simplified });
   if (error) throw error; return data;
 }
+// One sentence-jumble check: seq is the student's order (positions in the public list).
+// Returns { right, explain } or { right: false, pos, why } (pos = first place that is wrong) or { locked: true }.
+export async function checkOrder(item, seq, ms) {
+  const c = await sb(); const { data, error } = await c.rpc("check_order", { p_item: item, p_seq: seq, p_ms: Math.round(ms || 0) });
+  if (error) throw error; return data;
+}
 export async function dealCards() {
   const c = await sb(); const { data, error } = await c.rpc("deal_cards");
   if (error) throw error; return data;

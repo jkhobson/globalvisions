@@ -13,6 +13,9 @@ create table if not exists public.trust_cards (idx int primary key, ok boolean n
 -- each as { right, trap, b, why }. The school website never gets it.
 alter table public.items add column if not exists explain text not null default '';
 alter table public.trust_cards add column if not exists why text not null default '';
+-- Sentence jumbles: seq is the right order (positions in the public list); steps[n] is the reason shown when place n is wrong.
+alter table public.items add column if not exists seq int[];
+alter table public.items add column if not exists steps jsonb;
 alter table public.blocks enable row level security;
 alter table public.items enable row level security;
 alter table public.trust_cards enable row level security;
@@ -61,6 +64,7 @@ create table if not exists public.checks (
   attempt_id bigint references public.attempts(id) on delete set null,   -- set when save_attempt uses it
   created_at timestamptz not null default now()
 );
+alter table public.checks add column if not exists seq int[];   -- the order a student checked, for sentence jumbles
 create index if not exists checks_open on public.checks (user_id, item_id) where attempt_id is null;
 alter table public.checks enable row level security;   -- no policies: only these functions use it
 create table if not exists public.deals (user_id uuid primary key references auth.users on delete cascade, slots int[] not null default '{}');
@@ -112,6 +116,32 @@ begin
   return jsonb_build_object('right', false, 'why', o->>'why', 'trap', o->>'trap', 'b', o->>'b');
 end $$;
 
+-- One sentence-jumble check. Says right or wrong and, if wrong, the first place that is wrong and that place's job.
+-- It never says which sentence belongs there. Two wrong checks, then it's locked until the activity is saved.
+-- Checking the same order again doesn't count twice. Recorded as pick 0 (right) or 1 (wrong), like a tap.
+create or replace function public.check_order(p_item text, p_seq int[], p_ms int default 0) returns jsonb
+language plpgsql security definer set search_path = public as $$
+declare me uuid := auth.uid(); it record; n int; pos int; wrongs int;
+begin
+  if public.my_class_id() is null or not public.school_ok() then raise exception 'not in a class'; end if;
+  select * into it from items where id = p_item; if it is null or it.seq is null then raise exception 'unknown jumble'; end if;
+  n := cardinality(it.seq);
+  if p_seq is null or cardinality(p_seq) <> n or (select count(distinct x) from unnest(p_seq) x where x between 0 and n - 1) <> n then raise exception 'bad order'; end if;
+  if (select count(*) from checks where user_id = me and created_at > now() - interval '1 day') >= 600 then raise exception 'daily limit'; end if;
+  select min(i) into pos from generate_subscripts(it.seq, 1) i where p_seq[i] <> it.seq[i];
+  if not exists (select 1 from checks where user_id = me and item_id = p_item and attempt_id is null and seq = p_seq and created_at > now() - interval '3 hours') then
+    if exists (select 1 from checks where user_id = me and item_id = p_item and attempt_id is null and is_right and created_at > now() - interval '3 hours') then
+      return jsonb_build_object('locked', true);
+    end if;
+    select count(*) into wrongs from checks where user_id = me and item_id = p_item and attempt_id is null and not is_right and created_at > now() - interval '3 hours';
+    if wrongs >= 2 then return jsonb_build_object('locked', true); end if;
+    insert into checks (user_id, item_id, pick, seq, is_right, ms)
+      values (me, p_item, case when pos is null then 0 else 1 end, p_seq, pos is null, least(greatest(coalesce(p_ms, 0), 0), 3600000));
+  end if;
+  if pos is null then return jsonb_build_object('right', true, 'explain', it.explain); end if;
+  return jsonb_build_object('right', false, 'pos', pos - 1, 'why', it.steps ->> (pos - 1));
+end $$;
+
 -- Trust or Bust: 8 cards (4 to trust, 4 to bust), the ones this student has seen least.
 create or replace function public.deal_cards() returns int[]
 language plpgsql security definer set search_path = public as $$
@@ -142,7 +172,7 @@ end $$;
 /* ---------------- save one finished activity ---------------- */
 -- The app sends what the student tapped. The server decides what was right, and how much XP it earns.
 --   question answers: { item, help }   (what was tapped comes from check_answer's records, not from the app)
---   reflections:      { item: 'fizz-refl-N', reflection: true, text }
+--   reflections:      { item: '<mission>-refl-N', reflection: true, text }   (only in a mission's debrief)
 --   game cards:       { item: 'trust-N' }  (the first check_card answer counts)
 create or replace function public.save_attempt(p_client_id text, p_text_id text, p_answers jsonb)
 returns int language plpgsql security definer set search_path = public as $$
@@ -151,7 +181,8 @@ declare
   pos int; simp boolean; sup text; barrier text; traps jsonb; gap text; o jsonb;
   clean jsonb := '[]'::jsonb; raw int := 0; xp int; n int; is_game boolean; is_gym boolean;
   combo int := 0; pts int := 0; used int; today date := public.school_day(now());
-  ids bigint[]; used_checks bigint[] := '{}'; picks jsonb; first_ms int; new_id bigint;
+  ids bigint[]; used_checks bigint[] := '{}'; picks jsonb; rights boolean[]; first_ms int; new_id bigint;
+  refl_block text := case p_text_id when 'fizz-debrief' then 'F2' when 'signal-debrief' then 'F3' end;
   first_xp int[] := array[10, 15, 20, 25];
 begin
   select class_id into cls from students where user_id = me;
@@ -160,11 +191,11 @@ begin
     return (select attempts.xp from attempts where user_id = me and client_id = p_client_id);
   end if;
   if jsonb_typeof(p_answers) <> 'array' or jsonb_array_length(p_answers) not between 1 and 12 then raise exception 'bad answers'; end if;
-  if p_text_id !~ '^(fizz-(briefing|dossier|board|debrief|replay)|gym-[0-9T:-]{1,20}|game-trust)$' then raise exception 'unknown activity'; end if;
+  if p_text_id !~ '^((fizz|signal)-(briefing|dossier|board|debrief|replay)|(gym|dojo)-[0-9T:-]{1,20}|game-trust)$' then raise exception 'unknown activity'; end if;
   if (select count(*) from attempts where user_id = me and public.school_day(created_at) = today) >= 80 then
     raise exception 'daily limit';
   end if;
-  is_game := p_text_id = 'game-trust'; is_gym := p_text_id like 'gym-%';
+  is_game := p_text_id = 'game-trust'; is_gym := p_text_id ~ '^(gym|dojo)-';   -- Think Gym and Debate Dojo share the practice limits
 
   for a in select * from jsonb_array_elements(p_answers) loop
     if is_game then
@@ -178,21 +209,21 @@ begin
       clean := clean || jsonb_build_object('item', a->>'item', 'game', true, 'support', sup,
         'traps', case when sup = 'explained' and card.trap is not null then jsonb_build_array(card.trap) else '[]'::jsonb end);
     elsif coalesce((a->>'reflection')::boolean, false) then
-      if p_text_id <> 'fizz-debrief' then raise exception 'reflection outside debrief'; end if;
-      clean := clean || jsonb_build_object('item', left(a->>'item', 40), 'block', 'F2', 'reflection', true,
+      if refl_block is null then raise exception 'reflection outside debrief'; end if;
+      clean := clean || jsonb_build_object('item', left(a->>'item', 40), 'block', refl_block, 'reflection', true,
         'text', left(coalesce(a->>'text', ''), 1000), 'support', 'none', 'help', 0);
       if char_length(trim(coalesce(a->>'text', ''))) >= 10 then raw := raw + 5; end if;
     else
       select * into it from items where id = a->>'item';
       if it is null then raise exception 'unknown question'; end if;
       -- the taps the server recorded for this question since it was last saved
-      select array_agg(id order by id), coalesce(jsonb_agg(pick order by id), '[]'::jsonb), bool_or(simplified), (array_agg(ms order by id))[1]
-        into ids, picks, simp, first_ms
+      select array_agg(id order by id), coalesce(jsonb_agg(pick order by id), '[]'::jsonb), array_agg(is_right order by id), bool_or(simplified), (array_agg(ms order by id))[1]
+        into ids, picks, rights, simp, first_ms
         from checks where user_id = me and item_id = it.id and attempt_id is null and created_at > now() - interval '3 hours';
       used_checks := used_checks || coalesce(ids, '{}'); simp := coalesce(simp, false);
       -- position (1-based) of the first tap on the right option; null if never tapped
-      select min(ord) into pos from jsonb_array_elements_text(picks) with ordinality as x(k, ord)
-        where (it.options -> (x.k::int) ->> 'right')::boolean;
+      -- (each check was marked right or wrong when it was made, for taps and jumble orders alike)
+      select min(ord) into pos from unnest(rights) with ordinality as x(r, ord) where x.r;
       barrier := null;
       if pos = 1 then sup := 'none';
       elsif simp and pos = 2 then sup := 'none'; barrier := 'language';
@@ -200,7 +231,7 @@ begin
       else sup := 'explained'; end if;
       traps := '[]'::jsonb; gap := null;
       for o in select it.options -> (x.k::int) from jsonb_array_elements_text(picks) as x(k)
-               where not (it.options -> (x.k::int) ->> 'right')::boolean loop
+               where it.seq is null and not (it.options -> (x.k::int) ->> 'right')::boolean loop
         if barrier is null and o->>'trap' is not null then traps := traps || jsonb_build_array(o->>'trap'); end if;
         if o->>'b' is not null then gap := o->>'b'; end if;
       end loop;
@@ -219,10 +250,10 @@ begin
     select coalesce(sum(attempts.xp), 0) into used from attempts where user_id = me and text_id = 'game-trust' and public.school_day(created_at) = today;
     xp := greatest(0, least(round(pts / 10.0)::int, 30 - used));
   else
-    raw := raw + 20 + case when p_text_id = 'fizz-debrief' then 50 else 0 end;
+    raw := raw + 20 + case when refl_block is not null then 50 else 0 end;
     -- replays: same activity on the same day pays half the second time, then nothing. Think Gym: 3 full sets a day, then 2 at half.
     select count(*) into n from attempts where user_id = me and public.school_day(created_at) = today
-      and (text_id = p_text_id or (is_gym and text_id like 'gym-%'));
+      and (text_id = p_text_id or (is_gym and text_id ~ '^(gym|dojo)-'));
     xp := case when is_gym then case when n < 3 then raw when n < 5 then round(raw / 2.0)::int else 0 end
                else case when n = 0 then raw when n = 1 then round(raw / 2.0)::int else 0 end end;
   end if;
@@ -286,6 +317,8 @@ revoke all on function public.deal_options(text) from public, anon;
 grant execute on function public.deal_options(text) to authenticated;
 revoke all on function public.check_answer(text, int, int, boolean) from public, anon;
 grant execute on function public.check_answer(text, int, int, boolean) to authenticated;
+revoke all on function public.check_order(text, int[], int) from public, anon;
+grant execute on function public.check_order(text, int[], int) to authenticated;
 revoke all on function public.deal_cards() from public, anon;
 grant execute on function public.deal_cards() to authenticated;
 revoke all on function public.check_card(int, boolean) from public, anon;

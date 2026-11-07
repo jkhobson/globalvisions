@@ -1,3 +1,4 @@
+import { buzz } from "./haptics.js";
 // Short sound effects made with Web Audio (no sound files), and words read aloud with the browser's speech voice.
 // Sound can be turned off with the speaker button in the top bar; the choice is kept on this device for each student.
 let ctx = null, who = "";
@@ -48,6 +49,7 @@ const SOUNDS = {
   arcade: ARCADE
 };
 export function play(name) {
+  buzz(name);                                   // vibration has its own on/off switch, separate from sound
   if (!soundOn() || !SOUNDS[name]) return;
   const c = audio(); if (!c) return;
   const t0 = c.currentTime + 0.01;
