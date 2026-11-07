@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>3D Panda Lab</title>
+<title>3D Agents Lab</title>
 <link rel="icon" href="assets/icons/icon-192.png">
 <link rel="stylesheet" href="assets/style.css">
 <style>
@@ -17,59 +17,80 @@
   .stats dt { color: var(--muted); } .stats dd { margin: 0; font-weight: 700; text-align: right; font-variant-numeric: tabular-nums; }
   .row { display: flex; flex-wrap: wrap; gap: 8px; }
   .row .btn { flex: 1 1 30%; min-width: 0; }
+  .pick { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; margin: 0 0 12px; }
+  .pick button { font-size: 1.6rem; line-height: 1; padding: 8px 0; border-radius: 12px; border: 2px solid var(--line); background: var(--card); cursor: pointer; }
+  .pick button.on { border-color: var(--brand); background: var(--sea); }
 </style>
 </head>
 <body>
 <main>
-  <p class="kicker">Trial · not part of the student app yet</p>
-  <h1>3D panda lab</h1>
-  <p class="lead">A chibi panda built in Blender, saved as a small 3D file, and drawn with Three.js. Tap the buttons to see it trot and turn, then walk it around the island below.</p>
+  <p class="kicker">Agents in 3D</p>
+  <h1>3D agents lab</h1>
+  <p class="lead">Twelve chibi animals built in Blender, each saved as a small 3D file and drawn with Three.js. Pick an animal, make it move and turn, then walk it around the island below.</p>
+  <div class="pick" id="pick" role="group" aria-label="Animal"></div>
 
   <section class="card">
     <div class="lab-stage" id="stage"><span class="agent3d" id="big"><span class="a-shadow"></span><span class="a-body"></span></span></div>
     <div class="row" style="margin-top:10px">
-      <button class="btn" id="walk">Trot</button>
+      <button class="btn" id="walk">Move</button>
       <button class="btn ghost" id="turn">Turn</button>
       <button class="btn ghost" id="spin">Spin</button>
     </div>
-    <p class="small" id="msg">Loading the panda…</p>
+    <p class="small" id="msg">Loading…</p>
   </section>
 
   <h3 class="sec">On the island</h3>
-  <section class="card"><div id="isle"></div><p class="small">Tap anywhere on the island and the panda walks there.</p></section>
+  <section class="card"><div id="isle"></div><p class="small">Tap anywhere on the island and your animal goes there.</p></section>
 
   <h3 class="sec">How heavy is it?</h3>
   <section class="card">
     <dl class="stats">
-      <dt>Panda model file</dt><dd id="s-bytes">…</dd>
+      <dt>This animal's model file</dt><dd id="s-bytes">…</dd>
       <dt>Triangles</dt><dd id="s-tris">…</dd>
       <dt>Draw calls per frame</dt><dd id="s-calls">…</dd>
       <dt>Three.js download (gzipped)</dt><dd>about 200 KB, once</dd>
       <dt>Time to load and show</dt><dd id="s-load">…</dd>
       <dt>Frames per second (this device)</dt><dd id="s-fps">…</dd>
     </dl>
-    <p class="small">The panda only loads when it is needed. If this device can't do 3D, the app keeps the flat panda.</p>
+    <p class="small">Only the student's own animal loads, and only on the island map. If this device can't do 3D, the app keeps the flat agent.</p>
   </section>
 </main>
 <script type="module">
   import { mountAgent3D, MODELS, canUse3D } from "./js/kit/agent3d.js";
-  import { mountIsland } from "./js/kit/walker.js";
+  import { mountIsland, kindOf } from "./js/kit/walker.js";
   const $ = s => document.querySelector(s);
   const kb = n => `${(n / 1024).toFixed(0)} KB`;
+  const VERB = { trot: "Trot", plod: "Plod", hop: "Hop", swim: "Swim", flutter: "Flutter", squish: "Squish", scurry: "Scurry", wiggle: "Wiggle" };
+  // The model for an animal: a URL in the app, or bytes when a page provides them (window.AGENT_BYTES).
+  const modelOf = a => (window.AGENT_BYTES && window.AGENT_BYTES[a]) ? window.AGENT_BYTES[a]() : MODELS[a];
+  const big = $("#big"), host = $("#isle");
+  let animal = "🐼", bigAgent = null, isleAgent = null, turns = [[1, 0.4], [-1, 0.4], [0, -1], [0, 1]], ti = 0;
 
-  // 1. the big panda
-  const big = $("#big");
-  let turns = [[1, 0.4], [-1, 0.4], [0, -1], [0, 1]], ti = 0;
-  if (!canUse3D()) $("#msg").textContent = "This browser can't draw 3D, so the app would show the flat panda.";
-  mountAgent3D(big, { model: MODELS["🐼"], onStats: s => {
-    $("#s-bytes").textContent = kb(s.bytes); $("#s-tris").textContent = s.tris.toLocaleString();
-    $("#s-calls").textContent = s.calls; $("#s-load").textContent = `${s.loadMs} ms`;
-    $("#msg").textContent = "Panda ready.";
-  } }).then(r => { if (!r && canUse3D()) $("#msg").textContent = "The panda didn't load. The app would show the flat panda."; });
+  async function show(a) {
+    animal = a;
+    $("#pick").querySelectorAll("button").forEach(b => b.classList.toggle("on", b.dataset.a === a));
+    const move = kindOf(a).move;
+    $("#walk").textContent = big.classList.contains("walking") ? "Stand" : VERB[move];
+    if (bigAgent) bigAgent.destroy();
+    if (isleAgent) isleAgent.destroy();
+    $("#msg").textContent = canUse3D() ? "Loading…" : "This browser can't draw 3D, so the app would show the flat agent.";
+    bigAgent = await mountAgent3D(big, { model: modelOf(a), move, onStats: s => {
+      $("#s-bytes").textContent = kb(s.bytes); $("#s-tris").textContent = s.tris.toLocaleString();
+      $("#s-calls").textContent = s.calls; $("#s-load").textContent = `${s.loadMs} ms`;
+      $("#msg").textContent = "Ready.";
+    } });
+    if (!bigAgent && canUse3D()) $("#msg").textContent = "It didn't load. The app would show the flat agent.";
+    // the real island walker, with this animal in 3D in place of the flat one
+    mountIsland(host, { spots, avatar: a, start: { x: 50, y: 50 } });
+    isleAgent = await mountAgent3D(host.querySelector(".agent3d"), { model: modelOf(a), move });
+  }
+  $("#pick").innerHTML = Object.keys(MODELS).map(a => `<button type="button" data-a="${a}" aria-label="${a}">${a}</button>`).join("");
+  $("#pick").querySelectorAll("button").forEach(b => b.onclick = () => show(b.dataset.a));
+
   const face = ([dx, dy]) => { big.dataset.heading = `${dx},${dy}`; };
   face(turns[0]);
-  $("#walk").onclick = () => { const on = big.classList.toggle("walking"); $("#walk").textContent = on ? "Stand" : "Trot"; };
-  // Turning eases only while walking, so trot briefly to turn when standing still.
+  $("#walk").onclick = () => { const on = big.classList.toggle("walking"); $("#walk").textContent = on ? "Stand" : VERB[kindOf(animal).move]; };
+  // Turning eases only while moving, so move briefly to turn when standing still.
   const nudge = () => { if (!big.classList.contains("walking")) { big.classList.add("walking"); setTimeout(() => big.classList.remove("walking"), 600); } };
   $("#turn").onclick = () => { ti = (ti + 1) % turns.length; face(turns[ti]); nudge(); };
   $("#spin").onclick = () => {
@@ -77,13 +98,11 @@
     const id = setInterval(() => { a += 0.35; face([Math.cos(a), -Math.sin(a)]); if (a > Math.PI * 2) { clearInterval(id); if (!was) big.classList.remove("walking"); } }, 60);
   };
 
-  // 2. the real island walker, with the 3D panda in place of the flat one
   const spots = [{ id: "a", icon: "🏫", name: "School", x: 22, y: 30 }, { id: "b", icon: "📰", name: "News stand", x: 76, y: 38 }, { id: "c", icon: "⛲", name: "Fountain", x: 48, y: 78 }];
-  const host = $("#isle"); host.className = "isle-harvest";
-  mountIsland(host, { spots, avatar: "🐼", start: { x: 50, y: 50 } });
-  mountAgent3D(host.querySelector(".agent3d"), { model: MODELS["🐼"] });
+  host.className = "isle-harvest";
+  show(animal);
 
-  // 3. frames per second, measured over the last 2 seconds
+  // frames per second, measured over the last 2 seconds
   let n = 0, t0 = performance.now();
   (function tick(t) { n++; if (t - t0 > 2000) { $("#s-fps").textContent = Math.round(n * 1000 / (t - t0)); n = 0; t0 = t; } requestAnimationFrame(tick); })(t0);
 </script>
