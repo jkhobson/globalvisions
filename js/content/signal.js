@@ -550,6 +550,7 @@ export const ITEMS = [
 
   /* ---------- Debate Prep: sentence jumble, a rebuttal (M5) ---------- */
   { id: "m5-jumble-01", block: "M5", demand: 0, kind: "order",
+    claim: { by: "The Opposition", t: "Ripple makes people lonely. They stare at screens instead of talking to each other." },
     stem: { simple: "Put the rebuttal in order: They said, However, Because, So. Tap from first to last.",
             std: "Put this Affirmative rebuttal in the four-step order. Tap the sentences from first to last." },
     parts: steps(REBUT, [
@@ -560,6 +561,7 @@ export const ITEMS = [
     hint: "They said, However, Because, So. The first words of each sentence help.",
     explain: "They said, However, Because, So: repeat their point, disagree, give evidence, then say why it matters." },
   { id: "m5-jumble-02", block: "M5", demand: 1, kind: "order",
+    claim: { by: "The Affirmative", t: "Ripple helps everyone on the island get news fast." },
     stem: { simple: "Put the Opposition's rebuttal in order. Tap from first to last.",
             std: "The Opposition answers the point 'Ripple helps everyone get news fast'. Put their rebuttal in order, from first to last." },
     parts: steps(REBUT, [
@@ -570,6 +572,7 @@ export const ITEMS = [
     hint: "The signal words are different here. Which sentence repeats the other team's claim? Which one gives the example?",
     explain: "Same four steps with different words: their claim, your disagreement ('But…'), evidence, and what it means ('This means…')." },
   { id: "m5-jumble-03", block: "M5", demand: 2, kind: "order",
+    claim: { by: "The Opposition", t: "Ripple stops people talking face to face." },
     stem: { simple: "Put this rebuttal in order. Tap from first to last.",
             std: "This rebuttal has no 'However' or 'So' to help you. Put it in order, from first to last." },
     parts: steps(REBUT, [
@@ -578,6 +581,74 @@ export const ITEMS = [
       "The same survey shows 87 of 120 students use Ripple to reach family they can't visit.",
       "Ripple adds a way to talk; it doesn't take one away."]),
     hint: "Find their point first. Then the sentence that disagrees, the one with evidence, and the one that sums up why it matters.",
+    explain: "Without signal words, the four steps still hold: their point, your disagreement, your evidence, and why it matters." },
+
+  /* ---------- Debate Dojo: more rebuttal jumbles (M5), each answering a claim shown above it ---------- */
+  { id: "m5-jumble-04", block: "M5", demand: 0, kind: "order",
+    claim: { by: "The Opposition", t: "Online messages cause arguments, because you can't hear someone's tone of voice." },
+    stem: { simple: "Answer the claim. Put the rebuttal in order: They said, However, Because, So.",
+            std: "You are the Affirmative. Put your rebuttal to this claim in the four-step order, from first to last." },
+    parts: steps(REBUT, [
+      "They said online messages cause arguments because you can't hear tone.",
+      "However, Ripple also has voice notes and video calls.",
+      "Because Grandma Rosa could see and hear her grandson after his school play.",
+      "So Ripple can carry feelings, not just words."]),
+    hint: "Which sentence repeats their claim? Then look for However, Because and So.",
+    explain: "They said, However, Because, So: you repeated their claim, disagreed, gave an example, then said why it matters." },
+  { id: "m5-jumble-05", block: "M5", demand: 0, kind: "order",
+    claim: { by: "The Affirmative", t: "Ripple helps shy students speak up, because typing feels safer than talking." },
+    stem: { simple: "Answer the claim. Put the rebuttal in order: They said, However, Because, So.",
+            std: "You are the Opposition. Put your rebuttal to this claim in the four-step order, from first to last." },
+    parts: steps(REBUT, [
+      "They said Ripple helps shy students speak up.",
+      "However, typing a message is not the same as speaking out loud.",
+      "Because class talks, debates and job interviews still happen face to face.",
+      "So shy students still need practice speaking in person."]),
+    hint: "Which sentence repeats their claim? Then look for However, Because and So.",
+    explain: "They said, However, Because, So: their claim, your disagreement, your reason, and why it matters." },
+  { id: "m5-jumble-06", block: "M5", demand: 1, kind: "order",
+    claim: { by: "The Opposition", t: "Students just waste time scrolling on Ripple." },
+    stem: { simple: "Answer the claim. Put the rebuttal in order. The signal words are different this time.",
+            std: "You are the Affirmative. This rebuttal uses different signal words. Put it in order, from first to last." },
+    parts: steps(REBUT, [
+      "The Opposition argued that students only waste time scrolling on Ripple.",
+      "We disagree: most students use it for something useful.",
+      "In the Youth Council survey, 87 of 120 students message family every week.",
+      "This shows Ripple keeps families connected, not just busy."]),
+    hint: "Find the sentence that repeats their claim. Which one has a number from a source?",
+    explain: "Same four steps, new words: their claim, 'We disagree', the survey evidence, then 'This shows' why it matters." },
+  { id: "m5-jumble-07", block: "M5", demand: 1, kind: "order",
+    claim: { by: "The Affirmative", t: "Ripple group chats make teamwork easier." },
+    stem: { simple: "Answer the claim. Put the rebuttal in order. The signal words are different this time.",
+            std: "You are the Opposition. This rebuttal uses different signal words. Put it in order, from first to last." },
+    parts: steps(REBUT, [
+      "Our opponents said Ripple group chats make teamwork easier.",
+      "That is only half true.",
+      "In one Youth Council chat, a member blamed the whole team with an angry message instead of asking who needed help.",
+      "So a group chat can cause fights unless the team agrees how to use it."]),
+    hint: "Find the sentence that repeats their claim. Which one gives an example?",
+    explain: "Same four steps, new words: their claim, 'only half true', the group chat example, then why it matters." },
+  { id: "m5-jumble-08", block: "M5", demand: 2, kind: "order",
+    claim: { by: "The Opposition", t: "False news spreads faster on Ripple than the truth." },
+    stem: { simple: "Answer the claim. Put this rebuttal in order. There are no signal words to help you.",
+            std: "You are the Affirmative. This rebuttal has no 'However' or 'So'. Put it in order, from first to last." },
+    parts: steps(REBUT, [
+      "We heard that false news spreads faster on Ripple than the truth.",
+      "Sometimes it does, but Ripple can also stop it.",
+      "When the false storm post went round, the Ferry Office posted the real timetable on Ripple the same day.",
+      "The app that spreads a mistake can also be where the correction arrives."]),
+    hint: "Their claim first. Then the sentence that disagrees, the one with the example, and the one that says why it matters.",
+    explain: "Without signal words, the four steps still hold: their point, your disagreement, your evidence, and why it matters." },
+  { id: "m5-jumble-09", block: "M5", demand: 2, kind: "order",
+    claim: { by: "The Affirmative", t: "Ripple keeps families close, even when they live far apart." },
+    stem: { simple: "Answer the claim. Put this rebuttal in order. There are no signal words to help you.",
+            std: "You are the Opposition. This rebuttal has no 'However' or 'So'. Put it in order, from first to last." },
+    parts: steps(REBUT, [
+      "The other team told us that Ripple keeps families close.",
+      "Close to faraway family, maybe, but not to the family at the same table.",
+      "Tomas Reyes saw families at the café sitting together, all looking at their phones.",
+      "A quick message cannot replace talking to the person next to you."]),
+    hint: "Their claim first. Then the sentence that disagrees, the one with the example, and the one that says why it matters.",
     explain: "Without signal words, the four steps still hold: their point, your disagreement, your evidence, and why it matters." },
 
   /* ---------- Debate Dojo: PEEL sort (M4) ---------- */
