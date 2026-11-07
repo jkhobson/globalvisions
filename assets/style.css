@@ -221,26 +221,49 @@ a.island { border-color: var(--good); }
 .place.next .pi { animation: beckon 1.2s ease-in-out infinite; }
 @keyframes beckon { 50% { transform: translateY(-8px); } }
 
-.agent3d { width: 56px; height: 72px; transform-origin: 50% 100%; pointer-events: none !important; }
-/* chibi proportions: a big head on a small round body, with short arms and legs and round hands and feet */
+.agent3d { width: 64px; height: 64px; transform-origin: 50% 100%; pointer-events: none !important; }
 .a-shadow { position: absolute; left: 12px; right: 12px; bottom: -4px; height: 10px; border-radius: 50%; background: rgb(0 0 0 / .25); }
 .a-body { position: absolute; inset: 0; transform: rotateY(calc((1 - var(--face, 1)) * 90deg)); transition: transform .3s ease; transform-style: preserve-3d; }
-.agent3d.walking .a-body { animation: a-bob .3s ease-in-out infinite alternate; }
-.a-head { position: absolute; left: 50%; top: -2px; transform: translateX(-50%); font-size: 44px; line-height: 1; z-index: 3; filter: drop-shadow(0 2px 0 rgb(0 0 0 / .12)); }
-.a-coat { position: absolute; left: 16px; top: 40px; width: 24px; height: 20px; border-radius: 12px 12px 10px 10px; background: #ff8a3d; box-shadow: inset -4px -3px 0 rgb(0 0 0 / .12); z-index: 2; }
-.a-badge { position: absolute; left: 50%; top: 4px; transform: translateX(-50%); font-size: 9px; color: #fff; }
-.agent3d.away .a-badge { display: none; }
-.agent3d.away .a-head { filter: brightness(.8); }
-.a-arm { position: absolute; top: 43px; width: 7px; height: 11px; border-radius: 4px; background: #ff8a3d; transform-origin: 50% 2px; z-index: 1; }
-.a-arm.l { left: 12px; transform: rotate(25deg); } .a-arm.r { right: 12px; transform: rotate(-25deg); z-index: 3; }
-.a-hand { position: absolute; bottom: -5px; left: -1px; width: 9px; height: 9px; border-radius: 50%; background: #ffe0c2; box-shadow: inset -1px -1px 0 rgb(0 0 0 / .1); }
-.a-leg { position: absolute; top: 57px; width: 7px; height: 9px; border-radius: 3px; background: #3a6fd8; transform-origin: 50% 1px; }
-.a-leg.l { left: 20px; } .a-leg.r { right: 20px; }
-.a-foot { position: absolute; bottom: -5px; left: -3px; width: 13px; height: 8px; border-radius: 7px 7px 4px 4px; background: #fff; box-shadow: inset 0 -2px 0 #c9d3e6; }
-.agent3d.walking .a-leg.l, .agent3d.walking .a-arm.r { animation: a-swing .3s ease-in-out infinite alternate; }
-.agent3d.walking .a-leg.r, .agent3d.walking .a-arm.l { animation: a-swing .3s ease-in-out infinite alternate-reverse; }
+.a-whole { position: absolute; left: 50%; bottom: 0; translate: -50% 0; font-size: 50px; line-height: 1; transform-origin: 50% 100%; filter: drop-shadow(0 2px 0 rgb(0 0 0 / .12)); }
+
+/* four-legged cuties (fox, panda, tiger): big head in front, a round body, stubby legs and a tail */
+.k-trot .a-head { position: absolute; left: 0; top: 2px; font-size: 40px; line-height: 1; z-index: 4; }
+.q-torso { position: absolute; left: 18px; top: 26px; width: 38px; height: 24px; border-radius: 14px 16px 12px 12px; background: var(--fur); box-shadow: inset -5px -4px 0 rgb(0 0 0 / .1); z-index: 2; }
+.stripes .q-torso { background: repeating-linear-gradient(100deg, var(--fur) 0 6px, #2a2a2a 6px 8px); }
+.q-leg { position: absolute; top: 44px; width: 9px; height: 14px; border-radius: 4px 4px 5px 5px; background: var(--leg); transform-origin: 50% 2px; }
+.q-leg::after { content: ""; position: absolute; bottom: -2px; left: -1px; width: 11px; height: 6px; border-radius: 5px; background: var(--leg); filter: brightness(.8); }
+.q-leg.f1 { left: 22px; z-index: 3; } .q-leg.f2 { left: 28px; z-index: 1; } .q-leg.b1 { left: 44px; z-index: 3; } .q-leg.b2 { left: 49px; z-index: 1; }
+.q-tail { position: absolute; left: 50px; top: 14px; width: 14px; height: 24px; border-radius: 50% 50% 40% 40%; background: linear-gradient(to top, var(--tail) 60%, var(--tip) 60%); transform-origin: 30% 100%; transform: rotate(35deg); z-index: 1; }
+.k-trot.walking .q-leg.f1, .k-trot.walking .q-leg.b2 { animation: a-swing .28s ease-in-out infinite alternate; }
+.k-trot.walking .q-leg.f2, .k-trot.walking .q-leg.b1 { animation: a-swing .28s ease-in-out infinite alternate-reverse; }
+.k-trot.walking .a-body { animation: a-bob .28s ease-in-out infinite alternate; }
+.k-trot .q-tail { animation: wag 1.4s ease-in-out infinite alternate; }
+.k-trot.walking .q-tail { animation-duration: .3s; }
+.k-trot.away .a-head { filter: brightness(.8); }
+
+/* whole animals, each with its own way of moving */
+.agent3d .a-whole { animation: breathe 2.4s ease-in-out infinite; }
+.k-plod.walking .a-whole { animation: plod .7s ease-in-out infinite alternate; }
+.k-hop.walking .a-whole { animation: hop .4s ease-in-out infinite; }
+.k-swim .a-whole { bottom: 8px; }
+.k-swim.walking .a-whole { animation: swim .7s ease-in-out infinite alternate; }
+.k-flutter .a-whole { bottom: 16px; animation: float 1.6s ease-in-out infinite alternate; }
+.k-flutter .a-whole, .k-flutter.walking .a-whole { animation: float 1.6s ease-in-out infinite alternate, flap .18s linear infinite alternate; }
+.k-squish.walking .a-whole { animation: squish .45s ease-in-out infinite alternate; }
+.k-scurry.walking .a-whole { animation: hop .2s ease-in-out infinite; }
+.k-wiggle.walking .a-whole { animation: wiggle .22s ease-in-out infinite alternate; }
+
 @keyframes a-swing { from { transform: rotate(32deg); } to { transform: rotate(-32deg); } }
-@keyframes a-bob { from { translate: 0 0; rotate: -3deg; } to { translate: 0 -4px; rotate: 3deg; } }
+@keyframes a-bob { from { translate: 0 0; } to { translate: 0 -3px; } }
+@keyframes wag { from { transform: rotate(20deg); } to { transform: rotate(50deg); } }
+@keyframes breathe { 50% { scale: 1.03 0.97; } }
+@keyframes plod { from { rotate: -5deg; translate: -50% 0; } to { rotate: 5deg; translate: -50% -2px; } }
+@keyframes hop { 0%, 100% { translate: -50% 0; scale: 1.05 .92; } 50% { translate: -50% -14px; scale: .95 1.05; } }
+@keyframes swim { from { rotate: -14deg; translate: -50% 0; } to { rotate: 10deg; translate: -50% -10px; } }
+@keyframes float { from { translate: -50% 0; } to { translate: -50% -10px; } }
+@keyframes flap { from { scale: 1 1; } to { scale: .55 1; } }
+@keyframes squish { from { scale: 1.15 .82; rotate: -4deg; } to { scale: .9 1.12; rotate: 4deg; } }
+@keyframes wiggle { from { rotate: -12deg; } to { rotate: 12deg; } }
 .isle-go { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; min-height: 52px; }
 .isle-go p { margin: 0; flex: 1 1 160px; }
-@media (prefers-reduced-motion: reduce) { .agent3d.walking .a-body, .agent3d.walking .a-leg, .agent3d.walking .a-arm, .place.next .pi { animation: none; } .a-body { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .agent3d *, .place.next .pi { animation: none !important; } .a-body { transition: none; } }

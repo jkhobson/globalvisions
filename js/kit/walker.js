@@ -1,4 +1,4 @@
-// The island scene: a tilted 3D island and the student's agent, who walks (arms and legs swinging) to wherever
+// The island scene: a tilted 3D island and the student's agent, who moves (in its own animal way) to wherever
 // the student taps. Places stand up on the island like little signs. Used on the Map screen to move between
 // missions and places. No libraries: CSS 3D for the ground, and the same perspective maths in JS to place
 // the agent and the places on it, so they grow as they come towards you.
@@ -11,16 +11,32 @@ const SPEED = 28;                    // island units per second
 const ARRIVE = 10;                   // how close counts as "at" a place
 const DEPTH = 1.7;                   // the island plane is this many times taller than the view (see .ground in CSS)
 
+// Each agent moves like the animal it is. Fox, panda and tiger are cute four-legged animals that trot
+// (their emoji is only a head, so they get a small furry body, paws and a tail). The others are whole-animal
+// emoji that move in their own way: the turtle plods, birds hop, sea animals swim, the butterfly flutters,
+// the octopus squishes, the hedgehog scurries and the lizard wiggles.
+export const KINDS = {
+  "🦊": { move: "trot", fur: "#f07a2b", leg: "#3b2a22", tail: "#f07a2b", tip: "#fff" },
+  "🐼": { move: "trot", fur: "#f4f4f4", leg: "#222", tail: "#f4f4f4", tip: "#f4f4f4" },
+  "🐯": { move: "trot", fur: "#f3a03b", leg: "#f3a03b", tail: "#f3a03b", tip: "#222", stripes: true },
+  "🐢": { move: "plod", speed: 0.6 }, "🦉": { move: "hop" }, "🦜": { move: "hop" },
+  "🐬": { move: "swim", speed: 1.2 }, "🐳": { move: "swim" }, "🦋": { move: "flutter" },
+  "🐙": { move: "squish", speed: 0.8 }, "🦔": { move: "scurry", speed: 1.3 }, "🦎": { move: "wiggle", speed: 1.2 }
+};
+export const kindOf = avatar => KINDS[avatar] || { move: "hop" };
+
 export function agentHTML(avatar) {
-  return `<span class="agent3d" aria-hidden="true">
+  const k = kindOf(avatar);
+  if (k.move === "trot") return `<span class="agent3d k-trot${k.stripes ? " stripes" : ""}" aria-hidden="true" style="--fur:${k.fur};--leg:${k.leg};--tail:${k.tail};--tip:${k.tip}">
     <span class="a-shadow"></span>
     <span class="a-body">
-      <span class="a-leg l"><span class="a-foot"></span></span><span class="a-leg r"><span class="a-foot"></span></span>
-      <span class="a-arm l"><span class="a-hand"></span></span>
-      <span class="a-coat"><span class="a-badge">★</span></span>
-      <span class="a-arm r"><span class="a-hand"></span></span>
+      <span class="q-tail"></span>
+      <span class="q-leg b1"></span><span class="q-leg f1"></span>
+      <span class="q-torso"></span>
+      <span class="q-leg b2"></span><span class="q-leg f2"></span>
       <span class="a-head">${avatar}</span>
     </span></span>`;
+  return `<span class="agent3d k-${k.move}" aria-hidden="true"><span class="a-shadow"></span><span class="a-body"><span class="a-whole">${avatar}</span></span></span>`;
 }
 
 export function mountIsland(host, { spots, avatar, start = { x: 50, y: 55 }, onArrive = () => {}, onMove = () => {} }) {
@@ -31,6 +47,7 @@ export function mountIsland(host, { spots, avatar, start = { x: 50, y: 55 }, onA
     </div>`;
   const world = host.querySelector(".world"), layer = host.querySelector(".layer"), agent = host.querySelector(".agent3d");
   const els = Object.fromEntries([...layer.querySelectorAll(".place")].map(b => [b.dataset.id, b]));
+  const kind = kindOf(avatar);
   let pos = { ...start }, target = null, goal = null, raf = 0, last = 0, facing = 1, alive = true;
 
   // island coordinates -> screen position and size, matching the CSS rotateX + perspective of .ground
@@ -63,7 +80,7 @@ export function mountIsland(host, { spots, avatar, start = { x: 50, y: 55 }, onA
   function step(t) {
     if (!alive) return;
     const dt = Math.min(0.05, (t - (last || t)) / 1000); last = t;
-    const dx = target.x - pos.x, dy = target.y - pos.y, d = Math.hypot(dx, dy), move = SPEED * dt;
+    const dx = target.x - pos.x, dy = target.y - pos.y, d = Math.hypot(dx, dy), move = SPEED * (kind.speed || 1) * dt;
     if (Math.abs(dx) > 0.5) facing = dx < 0 ? -1 : 1;
     agent.classList.toggle("away", dy < -Math.abs(dx));            // walking away from you: show the back
     if (d <= move) { pos = { ...target }; layout(); stop(); return; }
