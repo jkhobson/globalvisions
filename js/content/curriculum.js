@@ -43,7 +43,16 @@ export const BLOCKS = {
   M6: { skill: "Communication", name: "Open and close a debate speech", needs: ["M4"], objectives: ["78Cm.01"] },
   T1: { skill: "Collaboration", name: "Share roles and tasks fairly", needs: [], objectives: ["78Cl.02"] },
   T2: { skill: "Collaboration", name: "Keep the team working together", needs: [], objectives: ["78Cl.01"] },
-  F3: { skill: "Reflection", name: "Weigh the benefits and challenges of teamwork", needs: [], objectives: ["78Rf.02"] }
+  F3: { skill: "Reflection", name: "Weigh the benefits and challenges of teamwork", needs: [], objectives: ["78Rf.02"] },
+  // Ember Reef (End of Semester 1 project, How can we use resources sustainably?): from the EOS1 brief and lessons L1 to L6.
+  L1: { skill: "Analysis", name: "Follow a life cycle: origin, make, use, end of life", needs: [], objectives: ["78A.03"] },
+  I1: { skill: "Analysis", name: "Sort impacts: personal, local and global", needs: ["L1"], objectives: ["78A.03"] },
+  N1: { skill: "Collaboration", name: "Agree as a team: needs, wants and trade-offs", needs: [], objectives: ["78Cl.01"] },
+  R4: { skill: "Research", name: "Record a source fully, with a key fact (a chatbot is not a source)", needs: [], objectives: ["78Rs.04"] },
+  D1: { skill: "Analysis", name: "Use data and the right chart to support an argument", needs: [], objectives: ["78A.02"] },
+  P1: { skill: "Analysis", name: "Hear every perspective and choose who should act", needs: ["I1"], objectives: ["78A.01", "78A.04"] },
+  G1: { skill: "Evaluation", name: "Give feedback that is kind, specific and judges the evidence", needs: [], objectives: ["78E.02", "78Cm.02"] },
+  F4: { skill: "Reflection", name: "Explain how my view changed and which skill improved", needs: [], objectives: ["78Rf.03", "78Rf.04"] }
 };
 
 // Thinking traps: tagged on wrong options so the app (and the teacher) can see which traps catch each student.
@@ -65,6 +74,11 @@ export const TRAPS = {
   "shut-down": { name: "Shut the talk down", tip: "Disagree with a reason, so the conversation keeps going." },
   "off-topic": { name: "Off the point", tip: "Answer what was said, and link back to the motion." },
   "unfair-roles": { name: "Unfair share", tip: "Share jobs by skills and time, so everyone does a fair part." },
+  "chatbot-source": { name: "Chatbot as a source", tip: "A chatbot is not a source. Find the fact in a real source and cite that." },
+  "changed-data": { name: "Changed the data", tip: "Give every number exactly as the source gives it." },
+  "wrong-chart": { name: "Wrong chart", tip: "Bar: compare amounts. Line: change over time. Pie: parts of a whole." },
+  "one-perspective": { name: "Only one voice", tip: "Ask whose voice is missing: producers, manufacturers, consumers or waste authorities." },
+  "vague-feedback": { name: "Vague feedback", tip: "Good feedback is kind, specific and linked to the success criteria." },
   "yes-no-question": { name: "Yes/no question", tip: "A research question should start with How, Why, What or To what extent, so it can't be answered with just yes or no." }
 };
 

@@ -310,3 +310,7 @@ button.island { font: inherit; text-align: left; cursor: pointer; border-color: 
 .j-order.solved .jpart { border-color: var(--good); background: var(--good-bg); animation: pop .3s ease-out; }
 .jpart.shake { border-color: var(--bad); }
 @media (prefers-reduced-motion: reduce) { .shake, .pop, .jpart.snap, .j-order.solved .jpart { animation: none; } }
+
+/* ---------------- Ember Reef: warm sand, teal shallows ---------------- */
+.isle-ember .ground .beach { background: #f0d9a8; }
+.isle-ember .ground .grass { background: radial-gradient(circle at 25% 35%, #a8d4a0 0 22%, transparent 23%), radial-gradient(circle at 72% 62%, #93c98f 0 20%, transparent 21%), #7fbf86; }
