@@ -1,5 +1,5 @@
 # Publishes the student app to GitHub Pages. It copies only what a student's browser needs.
-# In school mode (Supabase filled in, in js/config.js) it leaves out js/content/fizz.js, the full content with the
+# In school mode (Supabase filled in, in js/config.js) it leaves out each pack's full content file (fizz.js, signal.js, ember.js…), with the
 # answer key, so students can't read the answers. The server holds the key (supabase/content.sql).
 # Runs when you press "Run workflow" on the Actions tab, or on every merge to main once the
 # repository variable PAGES_ON is set to true. See docs/setup-school-login.md.
@@ -31,7 +31,10 @@ jobs:
           if grep -q 'SUPABASE_URL = "";' js/config.js; then
             echo "Demo mode: no server, so the demo keeps its own content."
           else
-            rm site/js/content/fizz.js site/js/content/signal.js
+            # every content pack listed in worlds.js has a full file (answer key) and a -public.js file; keep only the public ones
+            packs=$(sed -n 's/^export const PACKS = \[\(.*\)\];/\1/p' js/content/worlds.js | tr -d '" ' | tr ',' ' ')
+            [ -n "$packs" ] || { echo "Could not read PACKS from worlds.js"; exit 1; }
+            for p in $packs; do rm "site/js/content/$p.js"; done
             echo "School mode: answer key left out."
           fi
       - uses: actions/upload-pages-artifact@v3
