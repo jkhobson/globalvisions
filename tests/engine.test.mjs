@@ -31,9 +31,10 @@ test("blocks unlock in order: E1 first, E2 after E1 is mastered", () => {
 
 test("rank grows with blocks mastered", () => {
   assert.equal(rank(mastery([]), "Evaluation").name, "Explorer");
-  const all = ["E1", "E2", "E3", "E4", "E5"].flatMap(b => Array(8).fill(right(b)));
+  const all = ["E1", "E2", "E3", "E4", "E5", "G1"].flatMap(b => Array(8).fill(right(b)));
   assert.equal(rank(mastery([at(all)]), "Evaluation").name, "Ambassador");
-  assert.equal(rank(mastery([]), "Analysis"), null);
+  assert.equal(rank(mastery([]), "Analysis").name, "Explorer");
+  assert.equal(rank(mastery([]), "Nonsense"), null);
 });
 
 test("demand: 2 right first time up, 2 missed down, never outside 0..2", () => {

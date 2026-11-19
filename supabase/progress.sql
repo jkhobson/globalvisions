@@ -182,7 +182,7 @@ declare
   clean jsonb := '[]'::jsonb; raw int := 0; xp int; n int; is_game boolean; is_gym boolean;
   combo int := 0; pts int := 0; used int; today date := public.school_day(now());
   ids bigint[]; used_checks bigint[] := '{}'; picks jsonb; rights boolean[]; first_ms int; new_id bigint;
-  refl_block text := case p_text_id when 'fizz-debrief' then 'F2' when 'signal-debrief' then 'F3' end;
+  refl_block text := case p_text_id when 'fizz-debrief' then 'F2' when 'signal-debrief' then 'F3' when 'ember-debrief' then 'F4' end;
   first_xp int[] := array[10, 15, 20, 25];
 begin
   select class_id into cls from students where user_id = me;
@@ -191,7 +191,7 @@ begin
     return (select attempts.xp from attempts where user_id = me and client_id = p_client_id);
   end if;
   if jsonb_typeof(p_answers) <> 'array' or jsonb_array_length(p_answers) not between 1 and 12 then raise exception 'bad answers'; end if;
-  if p_text_id !~ '^((fizz|signal)-(briefing|dossier|board|debrief|replay)|(gym|dojo)-[0-9T:-]{1,20}|game-trust)$' then raise exception 'unknown activity'; end if;
+  if p_text_id !~ '^((fizz|signal|ember)-(briefing|dossier|board|debrief|replay)|(gym|dojo)-[0-9T:-]{1,20}|game-trust)$' then raise exception 'unknown activity'; end if;
   if (select count(*) from attempts where user_id = me and public.school_day(created_at) = today) >= 80 then
     raise exception 'daily limit';
   end if;
