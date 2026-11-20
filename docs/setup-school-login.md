@@ -80,7 +80,16 @@ Trade-off: in school mode each tap needs an internet connection.
 
 ## Publishing the app (GitHub Pages)
 
-1. GitHub Pages for a private repository needs a paid GitHub plan (GitHub Pro for a personal account). Check the current price at https://github.com/pricing.
-2. In the repository, open **Settings → Pages**. Under **Build and deployment → Source**, choose **GitHub Actions**.
-3. Open the **Actions** tab, choose **Publish the student app**, and click **Run workflow**.
-4. To publish automatically after every merge, open **Settings → Secrets and variables → Actions → Variables**, click **New repository variable**, name it `PAGES_ON` and set it to `true`.
+Right now the repository is **public** and the demo is published straight from `main`. That is fine for demo mode, but in school mode the full content with the answers (`js/content/fizz.js`, `js/content/signal.js`) must not be public. Anyone can read a public repository on GitHub, so leaving those files off the website is not enough. Before step 7 (connecting the app), do this:
+
+1. Make the repository private: **Settings → General → Danger Zone → Change repository visibility → Make private**.
+2. A private repository needs a paid GitHub plan for Pages (GitHub Pro for a personal account). Check the current price at https://github.com/pricing. Without it, the student site goes offline when the repository goes private.
+3. In the repository, open **Settings → Pages**. Under **Build and deployment → Source**, choose **GitHub Actions**. This switches publishing to the workflow, which leaves the answer files off the website.
+4. Open **Settings → Secrets and variables → Actions → Variables**, click **New repository variable**, name it `PAGES_ON` and set it to `true`, so every merge to `main` publishes.
+5. Open the **Actions** tab, choose **Publish the student app**, and click **Run workflow** once to publish straight away.
+
+The website address stays the same (`https://jkhobson.github.io/globalvisions/`).
+
+## Checking the database rules
+
+`tests/db.test.mjs` runs all three SQL files on a local Postgres with a stand-in for Supabase sign-in, then plays a teacher, students in two classes, an outside Gmail account and an anonymous visitor. It checks that outsiders are turned away, students can't read the answer key, other students' work or other classes, can't write their own XP, and that the server's XP and leaderboard numbers come out right. It is skipped unless `GV_PG` points at a Postgres server where it may make a scratch database, for example `GV_PG="postgresql://postgres@localhost:5432/postgres" npm test`.

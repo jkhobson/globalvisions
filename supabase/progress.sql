@@ -336,3 +336,12 @@ create or replace function public.set_support(p_level int) returns void language
 $$;
 revoke all on function public.set_support(int) from public, anon;
 grant execute on function public.set_support(int) to authenticated;
+
+/* ---------------- table rights for the app (belt and braces) ---------------- */
+-- Row level security above decides which rows each person sees. These lines also make sure that:
+--   the answer key and tap records can't be read through the API at all, even if a rule above is ever loosened, and
+--   the tables the app does read are reachable, whatever Supabase's default rights are for new projects.
+revoke all on public.items, public.blocks, public.trust_cards, public.checks, public.deals from anon, authenticated;
+revoke all on public.teachers, public.classes, public.students, public.attempts from anon;
+grant select on public.teachers, public.students, public.attempts to authenticated;
+grant select, insert, update on public.classes to authenticated;
