@@ -4,7 +4,7 @@ A phone-first practice app for Cambridge Lower Secondary Global Perspectives, st
 Students are field agents on a made-up island chain. Each island is one Grade 7 challenge. They train the six GP
 skills through missions, a Think Gym and games, earning XP, ranks and passport stamps.
 
-**Status: demo prototype.** Everything is stored in the browser, with a made-up class. No real student data, no server yet.
+**Status: live in demo mode.** With no server settings, everything is stored in the browser, with a made-up class. The school version (Google sign-in with school emails, class codes, XP worked out on the server, real class leaderboards and teacher view) is built and switches on when `js/config.js` gets the Supabase settings. See docs/setup-school-login.md.
 
 ## Try it
 
