@@ -1,4 +1,4 @@
--- Global Visions: tables and rules for school sign-in and classes.
+-- Perspecta: tables and rules for school sign-in and classes.
 -- Run this once in the Supabase SQL editor (see docs/setup-school-login.md).
 -- No student names, rosters or emails are stored in the repo. Emails live only in Supabase's own auth table.
 

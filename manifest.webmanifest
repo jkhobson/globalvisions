@@ -1,6 +1,6 @@
 {
-  "name": "Global Visions",
-  "short_name": "Global Visions",
+  "name": "Perspecta",
+  "short_name": "Perspecta",
   "description": "Global Perspectives skills practice: missions, sources and judgements.",
   "start_url": "./index.html",
   "scope": "./",

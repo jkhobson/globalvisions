@@ -1,4 +1,4 @@
--- Global Visions: saving students' work, XP worked out on the server, class leaderboards.
+-- Perspecta: saving students' work, XP worked out on the server, class leaderboards.
 -- Run after schema.sql, then run content.sql. Safe to run again.
 -- The rules here mirror js/engine.js and js/kit/rewards.js. If you change one, change the other (tests compare them).
 

@@ -25,15 +25,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Copy only the files students need
-        run: |
-          mkdir site
-          cp -r index.html teacher.html manifest.webmanifest assets js site/
-          if grep -q 'SUPABASE_URL = "";' js/config.js; then
-            echo "Demo mode: no server, so the demo keeps its own content."
-          else
-            rm site/js/content/fizz.js site/js/content/signal.js
-            echo "School mode: answer key left out."
-          fi
+        run: sh tools/build-site.sh
       - uses: actions/upload-pages-artifact@v3
         with:
           path: site

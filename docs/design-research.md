@@ -11,7 +11,7 @@ Notes behind the light theme, gathered November 2026. Please check the sources y
 - **Collect and play.** Classroom games popular with middle schoolers, such as Blooket, lean on collectable characters and many small game modes. Kahoot keeps a plain, fast race with a live leaderboard. Source: [Blooket vs Kahoot for middle school (Screenwise)](https://screenwiseapp.com/guides/blooket-vs-kahoot-for-middle-school-learning). This is a review site, not research.
 - **Light versus dark.** I did not find solid research showing that teens prefer one or the other. Duolingo, for example, is built on white backgrounds. I have not checked every app, so treat "most learning apps are light" as a guess. That is why the app now has a switch.
 
-## What this means for Global Visions
+## What this means for Perspecta
 
 1. A **bright light theme** with white space, plus the dark theme. Each student picks Auto (follows their phone), Light or Dark on the Me page.
 2. Use **chunky, pressable buttons and answer cards**: rounded corners with a darker bottom edge, so they feel like game buttons and are easy to tap.

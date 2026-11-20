@@ -60,7 +60,7 @@ const bring = el => el && el.scrollIntoView({ block: "nearest", behavior: reduce
 function signIn() {
   const avatars = ["🦊", "🐼", "🐢", "🦉", "🐬", "🦋", "🐯", "🦜", "🐙", "🦔", "🐳", "🦎"];
   app.innerHTML = `<main class="signin">
-    <h1>Global Visions</h1>
+    <h1>Perspecta</h1>
     <p class="lead">You are a field agent. Islands need your help. Check the facts, weigh the sources and make good decisions.</p>
     <div class="note">Demo mode: everything stays in this browser. Use a nickname, not your real name.</div>
     <label>Agent nickname <input id="nick" maxlength="16" autocomplete="off" placeholder="e.g. MangoComet"></label>
@@ -116,7 +116,7 @@ window.addEventListener("gv-sync", () => { const c = document.querySelector(".ch
 // Used only when js/config.js has Supabase settings. Step 1: school Google account. Step 2: class code and nickname.
 async function schoolSignIn() {
   const A = await import("./auth.js");
-  const shell = html => { app.innerHTML = `<main class="signin"><h1>Global Visions</h1>${html}</main>`; };
+  const shell = html => { app.innerHTML = `<main class="signin"><h1>Perspecta</h1>${html}</main>`; };
   shell(`<p>Checking your account…</p>`);
   let acc;
   try { acc = await A.account(); } catch (e) { return shell(`<p class="note">Can't reach the server. Check your internet and reload.</p>`); }
