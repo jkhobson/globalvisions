@@ -82,7 +82,7 @@ Trade-off: in school mode each tap needs an internet connection.
 
 Plan: keep this repository **private** on GitHub's free plan, keep Supabase on its free plan, and publish the student site with **Cloudflare Pages** (free). GitHub Pages can't publish a private repository on the free plan, and in school mode the full content with the answers (`js/content/fizz.js`, `js/content/signal.js`) must not be readable on a public GitHub page.
 
-**The student link will change**, from `https://jkhobson.github.io/globalvisions/` to a `….pages.dev` address (or your own domain later). Each site keeps its own saved data in the browser, so demo progress and home-screen icons don't carry over. The best moment to move is the day you switch on school sign-in, because from then on progress is saved on the server, not the device.
+**The student link will change**, from `https://jkhobson.github.io/globalvisions/` to `https://perspectagp.com` (or a `….pages.dev` address until the domain is set up). Each site keeps its own saved data in the browser, so demo progress and home-screen icons don't carry over. The best moment to move is the day you switch on school sign-in, because from then on progress is saved on the server, not the device.
 
 **Do these in order. Don't make the repository private until step 3 works,** or students lose the app in between.
 
@@ -91,7 +91,7 @@ Plan: keep this repository **private** on GitHub's free plan, keep Supabase on i
    2. Go to **Workers & Pages → Create → Pages → Connect to Git** (Cloudflare moves these buttons now and then; look for "Pages" and "Connect to Git").
    3. Connect your GitHub account `jkhobson`. When GitHub asks which repositories Cloudflare may see, choose **Only select repositories → globalvisions**. This keeps working after the repository goes private.
    4. Pick the `globalvisions` repository, production branch `main`.
-   5. Project name: this becomes the address, `<name>.pages.dev`. If you're renaming the app, use the new name here.
+   5. Project name: `perspecta`. This becomes the backup address, `perspecta.pages.dev` (Cloudflare adds a few letters if the name is taken).
    6. Build settings: Framework preset **None**, Build command `sh tools/build-site.sh`, Build output directory `site`.
    7. Click **Save and Deploy**.
 2. **Check the new address.** Open `https://<name>.pages.dev` on your phone. It should look the same as the current site. Every merge to `main` now publishes there within a minute or two.
@@ -99,7 +99,14 @@ Plan: keep this repository **private** on GitHub's free plan, keep Supabase on i
 4. **Make the repository private:** GitHub, **Settings → General → Danger Zone → Change repository visibility → Make private**. GitHub Pages stops at this point, so the old `github.io` link stops working.
 5. **Share the new link** with students and ask them to add it to their home screen again.
 
-**Your own domain (optional, later).** Buy it from any registrar (Cloudflare sells domains too), then in the Pages project open **Custom domains → Set up a custom domain** and follow the steps. Add the new domain to Supabase's Site URL and Redirect URLs as well.
+**Your own domain: perspectagp.com.** Domains cost money every year; the price is shown before you pay. The simplest route is to buy it from Cloudflare, because then Cloudflare sets up the address for you:
+1. In the Cloudflare dashboard, open **Domain Registration → Register Domains** (it may be called **Buy a domain**), search for `perspectagp.com` and buy it. If it's taken, try another name and tell Claude.
+2. Open the Pages project, then **Custom domains → Set up a custom domain**, type `perspectagp.com` and confirm. Cloudflare adds the DNS record itself. The https certificate can take a few minutes to an hour.
+3. Optional: add `www.perspectagp.com` the same way, so both spellings work.
+4. In Supabase, **Authentication → URL Configuration**: set Site URL to `https://perspectagp.com` and add it under Redirect URLs (keep the `pages.dev` address there too).
+5. Share `https://perspectagp.com` with students instead of the `pages.dev` address.
+
+If you buy the domain somewhere else, step 2 shows the DNS record to add at that registrar instead.
 
 **Free plan limits, as Cloudflare listed them in November 2026:** 500 builds a month and 20,000 files per site. Both are far more than this app needs. Limits change, so check https://developers.cloudflare.com/pages/platform/limits if something stops publishing.
 

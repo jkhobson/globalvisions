@@ -1,4 +1,4 @@
-# Global Visions
+# Perspecta
 
 A phone-first practice app for Cambridge Lower Secondary Global Perspectives, starting with Grade 7 (Stage 8).
 Students are field agents on a made-up island chain. Each island is one Grade 7 challenge. They train the six GP
