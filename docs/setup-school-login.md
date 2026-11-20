@@ -38,10 +38,10 @@ These menus were correct as far as I know in November 2026. Supabase and Google 
    6. Copy the **Client ID** and **Client secret** into the Google settings in Supabase, then save. The secret stays in Supabase only. Never put it in the repo or in a chat.
 5. **Tell Supabase where the app lives.**
    1. Go to **Authentication → URL Configuration**.
-   2. Set **Site URL** to the address where students will open the app, such as your GitHub Pages address.
+   2. Set **Site URL** to the address where students will open the app: your Cloudflare Pages address (see Publishing below) or your own domain.
    3. Add the same address under **Redirect URLs**.
 
-   Google sign-in needs a normal web address, so this is the point where GitHub Pages hosting comes back in.
+   Google sign-in needs a normal web address, so set up the Cloudflare Pages site (Publishing, below) before this step.
 6. **Make yourself a teacher.**
    1. Open the app's `teacher.html` page and sign in once with your school account.
    2. In Supabase, open **SQL Editor** and run the line below, with your own email in place of the example.
@@ -74,21 +74,36 @@ These menus were correct as far as I know in November 2026. Supabase and Google 
 
 In school mode the app never has the answer key. It loads the questions from `js/content/<island>-public.js` (for example `fizz-public.js` and `signal-public.js`), which list the options in alphabetical order and has no reasons or explanations. Each tap goes to the server, which says right or wrong and gives the reason for a wrong choice. After two wrong taps a question is locked until the activity is saved, and the XP is worked out from the server's record of the taps, not from what the app reports.
 
-The full content with the answers (`js/content/fizz.js`, `js/content/signal.js`) stays in this private repository. The publish workflow (`.github/workflows/pages.yml`) leaves it off the website in school mode.
+The full content with the answers (`js/content/fizz.js`, `js/content/signal.js`) stays in this private repository. The site build (`tools/build-site.sh`) leaves every pack that has a `-public.js` version off the website in school mode.
 
 Trade-off: in school mode each tap needs an internet connection.
 
-## Publishing the app (GitHub Pages)
+## Publishing the app (free private repository + Cloudflare Pages)
 
-Right now the repository is **public** and the demo is published straight from `main`. That is fine for demo mode, but in school mode the full content with the answers (`js/content/fizz.js`, `js/content/signal.js`) must not be public. Anyone can read a public repository on GitHub, so leaving those files off the website is not enough. Before step 7 (connecting the app), do this:
+Plan: keep this repository **private** on GitHub's free plan, keep Supabase on its free plan, and publish the student site with **Cloudflare Pages** (free). GitHub Pages can't publish a private repository on the free plan, and in school mode the full content with the answers (`js/content/fizz.js`, `js/content/signal.js`) must not be readable on a public GitHub page.
 
-1. Make the repository private: **Settings → General → Danger Zone → Change repository visibility → Make private**.
-2. A private repository needs a paid GitHub plan for Pages (GitHub Pro for a personal account). Check the current price at https://github.com/pricing. Without it, the student site goes offline when the repository goes private.
-3. In the repository, open **Settings → Pages**. Under **Build and deployment → Source**, choose **GitHub Actions**. This switches publishing to the workflow, which leaves the answer files off the website.
-4. Open **Settings → Secrets and variables → Actions → Variables**, click **New repository variable**, name it `PAGES_ON` and set it to `true`, so every merge to `main` publishes.
-5. Open the **Actions** tab, choose **Publish the student app**, and click **Run workflow** once to publish straight away.
+**The student link will change**, from `https://jkhobson.github.io/globalvisions/` to a `….pages.dev` address (or your own domain later). Each site keeps its own saved data in the browser, so demo progress and home-screen icons don't carry over. The best moment to move is the day you switch on school sign-in, because from then on progress is saved on the server, not the device.
 
-The website address stays the same (`https://jkhobson.github.io/globalvisions/`).
+**Do these in order. Don't make the repository private until step 3 works,** or students lose the app in between.
+
+1. **Make the Cloudflare Pages site.**
+   1. Sign up or sign in at https://dash.cloudflare.com (free plan).
+   2. Go to **Workers & Pages → Create → Pages → Connect to Git** (Cloudflare moves these buttons now and then; look for "Pages" and "Connect to Git").
+   3. Connect your GitHub account `jkhobson`. When GitHub asks which repositories Cloudflare may see, choose **Only select repositories → globalvisions**. This keeps working after the repository goes private.
+   4. Pick the `globalvisions` repository, production branch `main`.
+   5. Project name: this becomes the address, `<name>.pages.dev`. If you're renaming the app, use the new name here.
+   6. Build settings: Framework preset **None**, Build command `sh tools/build-site.sh`, Build output directory `site`.
+   7. Click **Save and Deploy**.
+2. **Check the new address.** Open `https://<name>.pages.dev` on your phone. It should look the same as the current site. Every merge to `main` now publishes there within a minute or two.
+3. **Tell Supabase about the new address** (if school sign-in is set up): put the `pages.dev` address (or your domain) in Supabase **Authentication → URL Configuration** as Site URL and Redirect URL (step 5 above).
+4. **Make the repository private:** GitHub, **Settings → General → Danger Zone → Change repository visibility → Make private**. GitHub Pages stops at this point, so the old `github.io` link stops working.
+5. **Share the new link** with students and ask them to add it to their home screen again.
+
+**Your own domain (optional, later).** Buy it from any registrar (Cloudflare sells domains too), then in the Pages project open **Custom domains → Set up a custom domain** and follow the steps. Add the new domain to Supabase's Site URL and Redirect URLs as well.
+
+**Free plan limits, as Cloudflare listed them in November 2026:** 500 builds a month and 20,000 files per site. Both are far more than this app needs. Limits change, so check https://developers.cloudflare.com/pages/platform/limits if something stops publishing.
+
+**Supabase free plan: pausing.** Supabase pauses a free project after about 7 days with little database activity, and emails you first. During term, students using the app keep it awake. Over a long holiday it will probably pause. Students then can't sign in until you open the Supabase dashboard, pick the project and click **Resume project**. Your data and settings come back, and a paused project can be resumed for up to a year. Resuming can take a few minutes, so open the dashboard the day before classes start again. Check the current rules at https://supabase.com/docs/guides/platform/free-project-pausing.
 
 ## Checking the database rules
 
